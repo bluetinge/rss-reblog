@@ -5,148 +5,243 @@
   <title>RSS-Reblog</title>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
 
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-  <script>
-    
-  srcFeed = {url:null, guid:null};
-  srcItem = null;
-    
-  window.onload = function() {
-    
-    errorSpan = document.getElementById("error")
-    
-    //1. Autofill the source feed and source guid.
-    
-    pageURL = "rssr.dev/reblog?&feed=https%3A%2F%2Fwww.bluetinge.dev%2Frss.xml&guid=https%3A%2F%2Fbluetinge.github.io%2Fregex-crossword%2F8"; //sample
-    // let pageURL = window.location.href; //uncomment to use actual URL
-    
-    searchParams = new URLSearchParams(pageURL);
-    srcFeed.url = searchParams.get("feed");
-    srcFeed.guid = searchParams.get("guid");
-
-    errorSpan.innerHTML = "\nFeed:"+srcFeed.url + "\n" + "GUID:"+srcFeed.guid;
-
-    //  1.2 Attempt to load the source feed
-    //var srcFeed = "https://feeds.feedburner.com/raymondcamdensblog?format=xml";
-    $.ajax({
-      type: 'GET',
-      url: "https://api.rss2json.com/v1/api.json?rss_url=" + srcFeed.url,
-      dataType: 'jsonp',
-      success: function(result) {
-        srcFeed.json = result;
-        loadSrc();
-      },
-      error: function(result) {
-        errorSpan.innerHTML = "Error: a feed could not be derived from "+srcFeed.url;
-        console.log("ERROR:")
-        console.log(result);
-      }
-    });
-
+  <!-- Generic styling -->
+  <style>
+  body {
+    background-color:#525c58;
   }
-
-    //2. From the source feed, determine if the guid can be found. Load the source pfp and name.
   
-  loadSrc = function() {
-    console.log(srcFeed.json);
-    srcItem = null;
-    for ( item of srcFeed.json.items) {
-      if (srcFeed.guid === item.guid){
-        if (srcItem != null) {
-          errorSpan.innerHTML = "Error: GUID occurs multiple times in feed";
-          return;
-        }
-        srcItem = item;
-      }
-    }
-    if (srcItem == null) {
-      errorSpan.innerHTML = "Error: GUID not in feed";
-      return;
-    }
+  code {
     
-    srcFeed.title = srcFeed.json.feed.title;
-    
-    //feed loaded correctly
-    // now to fill vars on page
-    
-    document.getElementById("srcItemTitle").innerHTML = srcItem.title;
-    document.getElementById("srcFeedTitle").innerHTML = srcFeed.title;
-    
-     
+  }
+  
+  label {
+    margin:2px;
+  }
+  
+  
+  .title {
+    color:#ffffff;
+      text-shadow: 2px 2px 4px #000000;
+      margin: 24px;
+  }
+  
+  .card {
+    background-color: #aed4c4;
+      padding: 24px;
+      margin: 24px;
+      border-radius:12px;
+      border:solid;
+      border-width:1px;
+      border-color:#5a6e65;
+      box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
   }
 
-    //3. Prompt the user for their feed (link or file)
-    //4. On load, display the determined username and pfp, and a preview of the post and tags. 
-    //5. Optionally, the user may alter the username or pfp.
-         //5a. The user may check a box to save their display name or pfp in their feed for the future.
-    //6. Optionally, the user may add content.
-    //7. Optionally, the user may add or remove tags.
-    //8. Optionally, the user may adjust security settings.
-    //9.Optionally, the user may specify the GUID or link.
-    //10. The user clicks generate, and the file is created.
-    //11. A final preview is created. 
-    //12. The user may download or copy the feed (as an RSS/XML file)
-    //13. The user may download or copy the post (as an html file or a markdown file
+  .section {
+    padding: 10px;
+  }
+  
+  .get-dest-feed {
+    padding-bottom: 0px;
+  }
+  
+  .dest-feed-icon {
+    max-height: 24px;
+    vertical-align: middle;
+    border: 1px solid transparent;
+  }
+  .dest-feed-icon:hover {
+    border: 1px solid blue;
 
+  }
+  
+  .security-box p {
+    margin-bottom: 6px;
+  }
+  
+  .radio-options {
+    padding-left: 6px;
+  } 
+
+  .radio-options label {
+    margin: 0px;
+  }
+  
+  input {
+    margin: 0px !important;
+    vertical-align: middle;
+  }
+  
+  
+  .add-guid p {
+    padding-left: 6px;
+  }
+  
+  .btn-generate {
+    background-color: #178054;
+    border-color: #167d52;
+  }
+  .btn-generate:hover {
+    background-color: #1a915f !important;
+  }
+  .btn-generate:focus {
+    border-color: #167d52;
+    background-color: #1a8a5b
+  }
+  .btn-generate:active { 
+    background-color: #1d9663 !important; 
+  }
+  .btn-generate:disabled { 
+    background-color: #000000 !important; 
+    border-color: #000000 !important;
+    color: #bfbfbf !important;
+  }
+  </style>
+  
+  <!--Stylizing for the RSS Reblog button (only works on some feed readers)-->
+  <style>
+  .rssr-font {
+    font-family:Helvetica,Arial,sans-serif;
+    font-size:12px;
+    /*vertical-align:middle; /* Moved to inline*/
+  }
+  .rssr-reblog-button {
+    border-radius:0.36em;
+    background-color:#E17831;
+    color:#ffffff;
+    text-decoration:none;
+    /*padding:0.36em; /* Moved to inline*/
+    /*vertical-align:middle; /* Moved to inline*/
+  }
+  .rssr-reblog-button:hover {
+    background-color:#ffba8c;
+    color:#ffffff;
+  }
+  </style>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://rawgit.com/leizongmin/js-xss/master/dist/xss.js"></script>
+  <script src="rss-reblog.js"></script>
+  <script>
+    window.onload = init;
   </script>
 
 
 </head>
 <body>
-  <div class="container">
-  
-    <p>Demo: <span id="error"></span> </p>
-  
-    <h3>Reblogging <b id="srcItemTitle">Title</b> from ""<b id="srcFeedTitle">Feed</b>":</h3>
 
-    <p>Reblog this post to your RSS feed:</p>
- 
-    <div>
+<div>
+  <p id="errorTop" style="color:red"></p>
+</div>
+  
+<div class="container" id="all" style="visibility: hidden;">
+  
+    <h3 class="title">Reblogging <b id="srcItemTitle">Title</b> from <b class="srcFeedDisplayName" >Feed</b>:</h3>
+
+
+  <div class="card"> 
+
+    <div class="section get-dest-feed">
+<!--    
+      <p>Reblog this post to your RSS feed:</p>
+      
 <!--( ) Link to your RSS feed XML file: [ Text box ] -->
+<!--
       <input type="radio" id="link" name="howInputJS" value="link">
-      <label for="link"> <form action="javascript:;" onsubmit=" myFunction( this ) "> Get from link:  <input type="text" id="destLink" name="destLink"> <input type="submit" value="Look up"></form></label><br>
+      <label for="link"> <form action="javascript:;" onsubmit="getDestFromLink()"> Get from link: <input type="text" id="destLinkInput" name="destLink" placeholder="yourblog.com/rss.xml"> <input type="submit" value="Look up"></form></label>
+      <br>-->
 
 <!--   ( ) Upload your RSS feed XML file [ Select file ] -->
-      <input type="radio" id="upload" name="howInputJS" value="upload">
-      <label for="upload"><label for="destFile">Upload: </label> <input type="file" id="destFile" name="destFile"> </label><br>
+<!--  <input type="radio" id="upload" name="howInputJS" value="upload"> &nbsp; -->
+      <label for="destFileInput"> Upload your rss.xml: </label>  <input type="file" id="destFileInput" name="destFileInput" accept=".xml,.rss" onchange="getDestFromFile()" style="display:inline;">
 
-
-      <p> Error box / Results box </p>
+      <div style="padding-left:20px;">
+<!-- There was an error loading your feed -->
+        <p id="errorDestFeedInfo" style="color:red; display:none; position:absolute; padding-bottom:0px;"></p>
+<!-- Your profile will be displayed as: [I] [ Text box ] -->
+        <div id="destFeedInfoBox" style="visibility:hidden;">
+          <p style="vertical-align:middle;margin-bottom:0px;">Display as:
+            <small style="padding:0.36em;"><span class="rssr-font rssr-reblog-header" >
+              <a style="text-decoration:none;">
+                  <img class="dest-feed-icon" src="default-profile.png" id='destFeedIcon' alt=' ' onclick="editPFP()">
+                <span onclick="openDisplayNameEditor()">
+                  <b><span id="destFeedTitle"></span><input type="text" id="destFeedTitleBox" style="display:none;" onfocusout="closeDisplayNameEditor();"></b>
+                  <span id="editHelper">(<u>edit</u>)</span>
+                </span>
+              </a>
+              <i> reblogged a post from </i>
+              <a style="text-decoration:none"> 
+                <img style="max-height:2em;vertical-align:middle;" src="default-profile.png" alt="" id="srcFeedIcon">
+                <b class="srcFeedDisplayName">OtherReblogger</b>
+              </a>
+            </span></small>
+          </p>
+<!-- [  ] Save this display name within your feed as the default to be used by RSS-Reblog -->
+            <div id="saveDefaultNameIcon"style="display:none;"><small>
+              <input id="saveName" type="checkbox"> <label for="saveName">Save this display name within your feed as the default to be used when reblogging</label><br>
+              <input id="saveIcon" type="checkbox"> <label for="saveIcon">Save this icon within your feed as the default to be used when reblogging</label>
+            </small>
+            </div>
+        </div>
+      </div>      
+    </div>
+    
+    
+    <div class="section add-to-post">
+<!-- [ Add something? (optional) ] -->
+      <textarea id="addendumText" cols="40" rows="6" style="width:100%" placeholder="Add something?"></textarea>
+<!-- Parse as: (•) Markdown ( ) HTML5 -->
+      <p><small> Parse as: 
+        <input type="radio" id="md" name="addTextType" value="md" checked="checked"> <label for="md">Markdown</label>
+        <input type="radio" id="html" name="addTextType" value="html"> <label for="html">HTML</label>
+      </small></p>
+<!-- Modify tags (optional): [ Text box ] -->
+      <div style="display:flex;"> <label for="reblogTags" style="vertical-align:center;padding-right:10px;"> Tags: </label> <textarea id="reblogTags" cols="40" rows="1" style="display:inline;flex-grow: 1;" placeholder="Add tags here, separated by #"></textarea></div>
     </div>
 
-    Your profile will be displayed as: [I] [ Text box ]
-        [  ] Save this display name within your feed as the default to be used by RSS-Reblog
+    <div class="section security-box">
+      <p>Style and script options:</p>
+<!-- ( ) Remove all JavaScript and CSS -->
+      <div class="radio-options"><small>
+        <input type="radio" name="securityOptions" id="removeAll" value="removeAll"> <label for="removeAll">Remove all scripting and styling </label></span>
+        <br>
+<!-- (•) Remove all JavaScript and CSS except [allowed inline style attributes] -->
+        <input type="radio" name="securityOptions" id="removeSome" value="removeSome" checked="checked"> <label for="removeSome">Remove all scripting and styling, except for <a target="_blank" href="https://validator.w3.org/feed/docs/warning/DangerousStyleAttr.html">allowed inline style attributes</a></label>
+        <br>
+<!-- ( ) Remove all JavaScript, keep all CSS -->
+        <input type="radio" name="securityOptions" id="keepStyles" value="keepStyles"> <label for="keepStyles">Remove all scripting, but keep all styling</label>
+        <br>
+<!-- ( ) Keep all CSS and JavaScript (Warning – security risks! Enable at your own risk) -->
+        <input type="radio" name="securityOptions" id="keepScripts" value="keepScripts"> <label for="keepScripts">Keep all scripting and styling (Warning - security risks! Enable at your own peril)</label>
+        <br>
+      </small></div>
+    </div>
 
-    Unique link to your reblog of this post (optional): [ Text box ]
-
-    Add something (optional):
-    [ Text box ]
-    ( ) Markdown ( ) HTML5
-
-    Modify tags (optional):
-    [ Text box ] 
-    All reblogs are also tagged “reblog.”
-
-    Security options:
-    ( ) Remove all JavaScript and CSS
-    (•) Remove all JavaScript and CSS except [allowed inline style attributes]
-    ( ) Remove all JavaScript, keep all CSS
-    ( ) Keep all CSS and JavaScript (Warning – security risks! Enable at your own risk)
-
-    Unique name: [ Text box ]
-
-    [ Generate ]
-
-    Preview pane
-    Note: external scripting disabled in preview pane for security reasons.
-    Tabs: View preview | View as markdown | View as HTML | View as RSS
-
-    [ Download RSS ]
-
-    [ ] Enable cookies to store my default preferences (Note: will not default to unsafe security preferences.)
-  
-  
+  <div class="section add-guid">
+<!-- Unique link to your reblog of this post (optional): [ Text box ] -->
+    <div style="display:flex;"> 
+      <label for="postLink" style="vertical-align:center;padding-right:10px;"> Link to this post <i>(optional)</i>: </label>
+      <textarea id="postLink" cols="40" rows="1" style="display:inline;flex-grow: 1;" placeholder="e.g., https://yourblog.com/posts/$POSTNUM$"></textarea>
+    </div>
+    <p><small><i>This must be a unique identifier; leave blank to autogenerate. <code>$GUID$</code> will be replaced by an autogenerated ID, and <code>$POSTNUM$</code> will be replaced by the number of items in your feed, plus one.</i></small></p>
   </div>
+  
+<!-- [ Generate ] -->
+  <div class="section generate">
+    <button type="button" class="btn btn-info btn-generate" id="generateButton" onclick="generateRSS()" disabled> <span class="glyphicon glyphicon-share"></span> Generate </button>
+  </div>
+  
+<!-- Tabs: View preview | View as markdown | View as HTML | View as RSS -->
+<!-- [ Preview pane ] -->
+  
+<!-- Note: external scripting disabled in preview pane for security reasons. -->
+
+<!-- [ Download RSS ] -->
+
+<!-- [ ] Enable cookies to store my default preferences (Note: will not default to unsafe security preferences.) -->
+
+  
+</div>
 </body>
 </html>
 
