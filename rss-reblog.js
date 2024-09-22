@@ -59,7 +59,7 @@ async function readRssFile(f) {
 
 
 
-init = function() {
+initRSSReblog = function() {
   
   srcFeed = {
     feedURL:null,     // Provided via URLSearchParams
@@ -71,8 +71,13 @@ init = function() {
     link:"",          // Derived from feedURL
   };
   srcItem = null;
-  destLink = "";
-  destFeed = {url:null, filename:"rss.xml", customDisplayName:"", customDisplayIcon:""};
+  destFeed = {
+    feedURL:"",          // from user input (link) but could be from file
+    link:null,           // from file
+    filename:"rss.xml",  //from filename
+    customDisplayName:"", //from user
+    customDisplayIcon:"" //from user
+    };
   cachedDestFeedLink = null
   
   
@@ -172,9 +177,9 @@ loadSrc = function() {
 getDestFromLink = function() {
   errorDestFeedInfo.style.display = 'none';
   
-  let oldLink = destLink;
-  destLink = document.getElementById("destLinkInput").value;
-  if (destLink == "" || destLink == oldLink){
+  let oldLink = destFeed.feedURL;
+  destFeed.feedURL = document.getElementById("destLinkInput").value;
+  if (destFeed.feedURL == "" || destFeed.feedURL == oldLink){
   //use cached feed
     if(cachedDestFeedLink != null) {
       destFeed = cachedDestFeedLink;
@@ -184,16 +189,16 @@ getDestFromLink = function() {
   }
   else {
     getExternalFeed(
-      destLink, 
+      destFeed.feedURL, 
       function(result) { 
         destFeed.json = result; 
-        destFeed.url = destFeed.json.feed.url
+        destFeed.link = destFeed.json.feed.url
         destFeed.title = destFeed.json.feed.title;
         cachedDestFeedLink = destFeed;
         loadDest();
       },
       function(result) { 
-        errorDestFeed("Error: a feed could not be derived from '"+destLink+"'")
+        errorDestFeed("Error: a feed could not be derived from '"+destFeed.feedURL+"'")
     })
   }
 }
@@ -212,7 +217,7 @@ async function getDestFromFile() {
         throw new Error("Channel is not a child element of RSS");
       }
       destFeed.title = destFeed.file.querySelector("title").innerHTML;
-      destFeed.url = destFeed.file.querySelector("link").getAttribute("href");
+      destFeed.link = destFeed.file.querySelector("link").getAttribute("href");
       loadDest();
       
     }
@@ -248,7 +253,7 @@ loadDest = function() {
   }
 
   if(destFeed.customDisplayIcon == ""){
-    document.getElementById('destFeedIcon').src = getFavicon(destFeed.url); 
+    document.getElementById('destFeedIcon').src = getFavicon(destFeed.link); 
   }
   else {
     document.getElementById('destFeedIcon').src = destFeed.customDisplayIcon;
@@ -295,7 +300,7 @@ editPFP = function() {
   if(PFPLink === null) return;
   else if(PFPLink === ""){
     destFeed.customDisplayIcon = "";
-    PFPLink = getFavicon(destFeed.url);
+    PFPLink = getFavicon(destFeed.link);
     document.getElementById('destFeedIcon').alt = "";
   }
   else {
@@ -351,8 +356,8 @@ generateRSS = function() {
   let srcDescription = srcItem.description;
   let srcLink = srcItem.link;
 
-  addContentDescription(newItem,srcContent,srcDescription,srcLink,srcItem.title,dateTime);
-  addLinkGUID(newItem,srcLink)
+  let destItemLink = addLinkGUID(newItem,srcLink)
+  addContentDescription(newItem,srcContent,srcDescription,srcLink,destItemLink,srcItem.title,dateTime,srcItem.pubDate);
   
   //populate without retrieving from JSON: categories (retrieved earlier), pubDate
   addCategories(newItem)
@@ -373,7 +378,7 @@ generateRSS = function() {
   // Preview is generated
 }
 
-addContentDescription = function(newItem,srcContent,srcDescription,srcLink,srcTitle,dateTime) {
+addContentDescription = function(newItem,srcContent,srcDescription,srcLink,destItemLink,srcTitle,dateTime,oPubDate) {
   
   // If both description and content:encoded are present, description is assumed to be a summary. Therefore, only the REBLOG-HEADER step is applied to description, while all steps are applied to content:encoded.
   // Exception: if they are literally identical, they remain literally identical.
@@ -381,49 +386,109 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcLink,srcTi
   // if both srcContent and srcDescription are empty, the post is just srcLink
   
   // Post content is stripped of unwanted elements FIRST
+  // options -- cloned in case the options are changed by the user
+  let opt = { 
+    "whiteList": structuredClone(rssReblogXSSOptions.whiteList),
+    "css": structuredClone(rssReblogXSSOptions.css),
+    "stripCommentTag": rssReblogXSSOptions.stripCommentTag,
+    "escapeHtml": rssReblogXSSOptions.escapeHtml
+  }
+  if(document.getElementById('removeAll').checked) {
+    // all styling is removed
+    // TODO: should also remove non-RSSR style classes
+    for ( const [tag, attr] of Object.entries(opt.whiteList)) {
+      opt.whiteList[tag] = attr.filter(a => a !== 'style');
+    }
+  } else if (document.getElementById('removeSome').checked) {
+    opt = rssReblogXSSOptions;
+  } else if (document.getElementById('keepStyles').checked) {
+    // TODO: style blocks should be adjusted to prevent alteration of other classes in the post 
+    opt.whiteList.style = [];
+    opt.css = false;
+  } else if (document.getElementById('keepAll').checked) {
+    // TODO: the post should be wrapped inside a sandboxed iframe
+    // that seems like the safest way to keep scripts
+    opt = undefined;
+  }
+  if(opt){
+    srcContent = filterXSS(srcContent,rssReblogXSSOptions);
+    srcDescription = filterXSS(srcDescription,rssReblogXSSOptions);
+  }
+  // Should now be free of anything dangerous
   
+  // srcFull is the variable that holds the canonical post content 
+  // and optionally, there is a separate description in srcDescription
   let srcFull = srcContent;
   if (!srcContent) srcFull = srcDescription;
   if (!srcDescription) srcFull = `<a href=${srcLink} target="_blank" rel="noopener noreferrer" >${srcTitle}</a>`;
   
-  
-  
-  
+  console.log(srcFull);
 
-/*
+  // Some other relevant variables:
+  // TODO: Encode these so that " and stuff don't mess literally everything up
+  
+  // default display name and icon vs. custom
+  
+  let isCustomDisplayName = false;
+  destFeed.displayName = destFeed.title;
+  if(destFeed.customDisplayName) {
+    let isCustomDisplayName = true;
+    destFeed.displayName = destFeed.customDisplayName;
+  }
+  let isCustomDisplayIcon = false;
+  destFeed.displayIcon = document.getElementById("destFeedIcon").src;
+  if(destFeed.customDisplayIcon) {
+    let isCustomDisplayIcon = true;
+    destFeed.displayIcon = destFeed.customDisplayIcon;
+  }
+  
+  // post links
+  
+  // current datetime and publication datetime
+  
+  // addendum and addendum link
+
+  // rb button link
+
   // RSSR REBLOG HEADER
   // If there was already a reblog header in the original post, it is REPLACED by the new header.
-  <!-- RSS-Reblog Header ([X] reblogged [Y])-->
+  let newFull = "";
+  
+let reblogHeader = `\
+  <!-- RSS-Reblog Header -->
   <div class="rssr-item" id="rssr-item-GUID">
     <div class="rssr-section rssr-reblog-header">
       <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
-        <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
-          <img style="max-height:24px;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt=""> 
-          <b>ThisBlogger</b>
-        </a> <i> reblogged a <a href="" target="_blank" rel="noopener noreferrer">post</a> from&nbsp; </i> 
-        <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
-          <img style="max-height:2em;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt="">
-          <b>OtherReblogger</b>
-        </a><i><time class="rssr-datetime" datetime="YYYY-MM-DD HH:MM:SS +HHSS">on YYYY-MM-DD:</time></i>
+        <a href="${destFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+          <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
+          <b>${destFeed.displayName}</b>
+        </a> <i> reblogged a <a href="${destItemLink}" target="_blank" rel="noopener noreferrer">post</a> from&nbsp; </i> 
+        <a href="${srcFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
+          <img style="max-height:2em;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
+          <b>${srcFeed.displayName}</b>
+        </a><i><time class="rssr-datetime" datetime="${"YYYY-MM-DD HH:MM:SS +HHSS"}">on ${"YYYY-MM-DD"}:</time></i>
       </small></p>
     </div>
     <hr class="rssr-hr rssr-reblog-header-divider">
   <!-- End RSS-Reblog Header -->
-
+`
+  
   // RSSR OP HEADER
   //If there was already an OP header in the original post, it is UNCHANGED (No new op header added)
 
+let opHeader = `\
   <!-- RSS-OP Header -->
     <div class="rssr-section rssr-post-original">
       <div class="rssr-section-header rssr-op-header">
         <p><small class="rssr-font rssr-op-header-font" style="vertical-align:middle;padding:0.36em;">
-          <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-            <img style="max-height:24px;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt="">
-            <b>OriginalPoster</b>
-          </a><i><a href="" target="_blank" rel="noopener noreferrer">posted</a><time class="rssr-datetime" datetime="YYYY-MM-DD HH:MM:SS +HHSS"> on YYYY-MM-DD</time>:</i>
+          <a href="${srcFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+            <img style="max-height:24px;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
+            <b>${srcFeed.displayName}</b>
+          </a><i>${`<a href="${srcLink}" target="_blank" rel="noopener noreferrer">posted</a>`}<time class="rssr-datetime" datetime="${"YYYY-MM-DD HH:MM:SS +HHSS"}"> on ${"YYYY-MM-DD"}</time>:</i>
         </small></p>
       </div>
   <!-- End RSS-OP Header -->
+`
 
   // ORIGINAL POST 
   // The entire original post is placed here -- except the aforemented REBLOG HEADER and REBLOG FOOTER
@@ -431,39 +496,44 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcLink,srcTi
   // ADDENDUM 
   // Only placed if addendum field is not empty
 
+let addendemHeader = `\
   <!-- RSS-Addendum Header -->
     </div>
     <hr class="rssr-hr rssr-hr-mid">
     <div class="rssr-section rssr-post-addendum">
       <div class="rssr-section-header rssr-addendum-header">
         <p><small class="rssr-font rssr-addendum-header-font" style="vertical-align:middle;padding:0.36em;">
-          <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-          <img style="max-height:24px;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt="">
-          <b>ThisBlogger</b></a> <i><a href="" target="_blank" rel="noopener noreferrer">added</a><time class="rssr-datetime" datetime="YYYY-MM-DD HH:MM:SS +HHSS"> on YYYY-MM-DD</time>:</i>
+          <a href="${destFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+          <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
+          <b>${destFeed.displayName}</b></a> ${`<i><a href="${destItemLink}" target="_blank" rel="noopener noreferrer">added</a>`}<time class="rssr-datetime" datetime="${"YYYY-MM-DD HH:MM:SS +HHSS"}"> on ${"YYYY-MM-DD"}</time>:</i>
         </small></p>
       </div>
   <!-- End RSS-Addendum Header -->
+`
 
   // Addendum content goes here
 
   // RSS REBLOG FOOTER 
   // If there was already a reblog footer in the original post, it is REPLACED by the new footer.
 
+let reblogFooter = `\
   <!-- RSS-Reblog Footer (Reblog Button) -->
     </div>
     <hr class="rssr-hr rssr-footer-divider">
     <div class="rssr-section rssr-footer">
-      <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;text-color:blue;"><a href="" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt=""> <b>Reblog via RSS</b></a></small></p>
-      <script async src="" charset="utf-8"></script>
+      <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;text-color:blue;"><a href="${`https://rssr.purl.org/rss-reblog?&feed=${"destFeed.feedURL (tbd)"}&guid=${"destItem.guid (tbd)"}`}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://www.rssboard.org/images/rss-icon.png"}" alt=""> <b>Reblog via RSS</b></a></small></p>
+      <script async src="${"rssr.purl.org/script"}" charset="utf-8"></script>
     </div>
   </div>
   <!-- End RSS-Reblog Footer -->
+`
 
-  // In addition, the following alterations are made to Content:
+newFull = reblogHeader + opHeader + srcFull + reblogFooter;
 
-  // Script blocks, style blocks (maybe), and non-whitelisted CSS are removed, unless the user decides to allow it. In addition, the user can also decide to strip all CSS (or edit the HTML as needed).
-  // If there is no content:encoded, then the post is considered to be in description, and so both the header and footer are added to the description. If there is a content:encoded, then only the header is added to description, and both the header and footer are added to content:encoded.
-  */
+//then add  as CDATASection
+
+console.log(newFull);
+
 }  
 
   // If a link was provided by the current user, the link is updated. Otherwise, it stays the same (*XSS vector? Javascript:, etc should be disallowed)
@@ -497,8 +567,9 @@ addLinkGUID = function (newItem, srcLink) {
   if (url != "") {
     url = url.replace(/\$GUID\$/g, guid);
     url = url.replace(/\$POSTNUM\$/g, newFile.querySelectorAll('item').length);
+    newItem.appendChild(newFile.createElement("link")).innerHtml = url; //TODO! chk if encoded
   }
-  newItem.appendChild(newFile.createElement("link"));
+  return url;
 }
   // The reblog <category> is added, if not already present. Additional tags provided by the user are added as categories.
 addCategories = function(newItem) {
@@ -545,3 +616,12 @@ addEnclosure = function (newItem, enclosure){
 //12. The user may download or copy the feed (as an RSS/XML file)
 //13. The user may download or copy the post (as an html file or a markdown file)
 */
+
+
+
+
+
+
+
+
+
