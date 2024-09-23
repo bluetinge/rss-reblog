@@ -968,7 +968,6 @@ FilterXSS.prototype.process = function (html) {
 
   // remove html comments
   if (!options.allowCommentTag || (options.stripCommentTag != DEFAULT.stripCommentTag)) { //EDIT
-    console.log("tf",options, options.allowCommentTag, !options.allowCommentTag, options.stripCommentTag, (!options.allowCommentTag || options.stripCommentTag));
     if(options.stripCommentTag) {                   // EDIT
       html = options.stripCommentTag(html);         // EDIT
       options.allowCommentTag = true;               // EDIT

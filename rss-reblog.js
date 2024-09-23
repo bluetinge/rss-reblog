@@ -216,8 +216,26 @@ async function getDestFromFile() {
       if(destFeed.file.querySelector('channel').parentNode !== destFeed.file.querySelector('rss')) {
         throw new Error("Channel is not a child element of RSS");
       }
-      destFeed.title = destFeed.file.querySelector("title").innerHTML;
-      destFeed.link = destFeed.file.querySelector("link").getAttribute("href");
+      for (e of destFeed.file.getElementsByTagNameNS("","link")) {
+        if(e.parentNode === destFeed.file.querySelector('channel')){
+          destFeed.link = e.innerHTML;
+          destFeed.feedURL = destFeed.link;
+          break;
+        }
+      }
+      for (e of destFeed.file.getElementsByTagNameNS("http://www.w3.org/2005/Atom","link")) {
+        if(e.parentNode === destFeed.file.querySelector('channel') && e.getAttribute("rel") == "self"){
+          destFeed.feedURL = e.getAttribute("href");
+          break;
+        }
+      }
+      for (e of destFeed.file.getElementsByTagNameNS("","title")) {
+        if(e.parentNode === destFeed.file.querySelector('channel')){
+          destFeed.title = e.innerHTML;
+          break;
+        }
+      }
+      
       loadDest();
       
     }
@@ -351,13 +369,14 @@ generateRSS = function() {
   if (srcItem.thumbnail != "") newItem.appendChild(newFile.createElement("thumbnail")).innerHTML = srcItem.thumbnail;
   if (srcItem.title != "") newItem.appendChild(newFile.createElement("title")).innerHTML = srcItem.title;
   
-  // Use original to modify: content, description, link
+  // Use original to modify: content, description, link, pubDate
   let srcContent = srcItem.content;
   let srcDescription = srcItem.description;
   let srcLink = srcItem.link;
+  let pubDateTime = new Date(srcItem.pubDate) // note: rss2json doesnt handle time zones?
 
-  let destItemLink = addLinkGUID(newItem,srcLink)
-  addContentDescription(newItem,srcContent,srcDescription,srcLink,destItemLink,srcItem.title,dateTime,srcItem.pubDate);
+  let [destItemLink,destItemGUID] = addLinkGUID(newItem,srcLink)
+  addContentDescription(newItem,srcContent,srcDescription,srcLink,destItemLink,destItemGUID,srcItem.title,dateTime,pubDateTime);
   
   //populate without retrieving from JSON: categories (retrieved earlier), pubDate
   addCategories(newItem)
@@ -378,7 +397,7 @@ generateRSS = function() {
   // Preview is generated
 }
 
-addContentDescription = function(newItem,srcContent,srcDescription,srcLink,destItemLink,srcTitle,dateTime,oPubDate) {
+addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,destItemLink,destItemGUID,srcTitle,cDateTime,pubDateTime) {
   
   // If both description and content:encoded are present, description is assumed to be a summary. Therefore, only the REBLOG-HEADER step is applied to description, while all steps are applied to content:encoded.
   // Exception: if they are literally identical, they remain literally identical.
@@ -387,12 +406,13 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcLink,destI
   
   // Post content is stripped of unwanted elements FIRST
   // options -- cloned in case the options are changed by the user
-  let opt = { 
-    "whiteList": structuredClone(rssReblogXSSOptions.whiteList),
-    "css": structuredClone(rssReblogXSSOptions.css),
-    "stripCommentTag": rssReblogXSSOptions.stripCommentTag,
-    "escapeHtml": rssReblogXSSOptions.escapeHtml
-  }
+  let opt = structuredClone(rssReblogXSSOptions);
+  // let opt = { 
+    // "whiteList": structuredClone(rssReblogXSSOptions.whiteList),
+    // "css": structuredClone(rssReblogXSSOptions.css),
+    // "stripCommentTag": rssReblogXSSOptions.stripCommentTag,
+    // "escapeHtml": rssReblogXSSOptions.escapeHtml
+  // }
   if(document.getElementById('removeAll').checked) {
     // all styling is removed
     // TODO: should also remove non-RSSR style classes
@@ -421,8 +441,6 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcLink,destI
   let srcFull = srcContent;
   if (!srcContent) srcFull = srcDescription;
   if (!srcDescription) srcFull = `<a href=${srcLink} target="_blank" rel="noopener noreferrer" >${srcTitle}</a>`;
-  
-  console.log(srcFull);
 
   // Some other relevant variables:
   // TODO: Encode these so that " and stuff don't mess literally everything up
@@ -443,92 +461,142 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcLink,destI
   }
   
   // post links
-  
-  // current datetime and publication datetime
-  
-  // addendum and addendum link
+  let postElement = "post";
+  let postedElement = "posted";
+  let addedElement = "added";
+  if(srcItemLink) {
+    postElement = `<a href="${srcItemLink}" target="_blank" rel="noopener noreferrer">post</a>`
+    postedElement = `<a href="${srcItemLink}" target="_blank" rel="noopener noreferrer">posted</a>`;
+  }
+  if(destItemLink) {
+    addedElement = `<i><a href="${destItemLink}" target="_blank" rel="noopener noreferrer">added</a>`;
+  }
 
   // rb button link
+  rblink = `purl.org/rssr/reblog?&feed=${encodeURIComponent(destFeed.feedURL)}&guid=${encodeURIComponent(destFeed.guid)}`;
+  if(destItemLink) rblink += `&feed=${encodeURIComponent(destItemLink)}`;
+  if(isCustomDisplayName) rblink += `&name=${encodeURIComponent(destFeed.displayName)}`;
+  if(isCustomDisplayIcon) rblink += `&icon=${encodeURIComponent(destFeed.displayIcon)}`;
 
-  // RSSR REBLOG HEADER
-  // If there was already a reblog header in the original post, it is REPLACED by the new header.
+  //Preparing for repost
   let newFull = "";
+  // Slice srcFull into (srcHeader) -> [RSSR Reblog Header] -> (Original Post) -> [RSSR Footer] -> (srcFooter)
+  // newFull = srcFull.slice(0, srcHeaderEnd) + New headers + srcFull.slice(opStart, opEnd) + Footer + FooterStart -> FooterEnd(srcFull.length)
+  let opStart = 0, opEnd = srcFull.length, opFooterStart = srcFull.length;
+  //Detection of existing reblog header:
+  let replaceReblogHeader = false;
+  let res = getTagAttrVal(null, "class", "rssr-reblog-header").exec(srcFull);
+  if(res){
+    let srcHeaderEnd = res.index;
+    res = getTagAttrVal(null, "class", "rssr-reblog-header-divider").exec(srcFull);
+    if(res) {
+      opStart = res.index + res[0].length + 1;
+      replaceReblogHeader = true;
+      newFull = srcFull.slice(0,srcHeaderEnd);
+    }
+  }
+  //Detection of existing OP header (if needed)
+  let addOPHeader = replaceReblogHeader ? false : !(getTagAttrVal(null, "class", "rssr-op-header").test(srcFull));
+  //Detection of existing footer
+  let replaceReblogFooter = false;
+  if(getTagAttrVal(null, "class", "rssr-footer").test(srcFull)){
+    res = getTagAttrVal(null, "class", "rssr-footer-divider").exec(srcFull);
+    if(res) {
+      opEnd = res.index;
+      replaceReblogFooter = true;
+      res = getTagAttrVal(null, "class", "rssr-footer-end").exec(srcFull);
+      opFooterStart = res.index + res[0].length + 1;
+    }
+  }
+  //Addendum;
+  let addendumText = document.getElementById("addendumText").value;
   
-let reblogHeader = `\
-  <!-- RSS-Reblog Header -->
-  <div class="rssr-item" id="rssr-item-GUID">
-    <div class="rssr-section rssr-reblog-header">
-      <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
-        <a href="${destFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
-          <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
-          <b>${destFeed.displayName}</b>
-        </a> <i> reblogged a <a href="${destItemLink}" target="_blank" rel="noopener noreferrer">post</a> from&nbsp; </i> 
-        <a href="${srcFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
-          <img style="max-height:2em;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
-          <b>${srcFeed.displayName}</b>
-        </a><i><time class="rssr-datetime" datetime="${"YYYY-MM-DD HH:MM:SS +HHSS"}">on ${"YYYY-MM-DD"}:</time></i>
-      </small></p>
-    </div>
-    <hr class="rssr-hr rssr-reblog-header-divider">
-  <!-- End RSS-Reblog Header -->
-`
+  // RSSR REBLOG HEADER
+  // If there was already a reblog header in the original post, it is REPLACED by the new header (but only from the div to the horizontal rule).
+  
+let reblogHeader = (replaceReblogHeader ? "" : `
+<!-- RSS-Reblog Header -->
+<div class="rssr-item">`) + `
+  <div class="rssr-section rssr-reblog-header">
+    <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
+      <a href="${destFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+        <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
+        <b>${destFeed.displayName}</b>
+      </a> <i> reblogged a ${postElement} from&nbsp; </i> 
+      <a href="${srcFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
+        <img style="max-height:2em;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
+        <b>${srcFeed.displayName}</b>
+      </a><i><time class="rssr-datetime" datetime="${cDateTime.toISOString()}">on ${cDateTime.toLocaleDateString()}:</time></i>
+    </small></p>
+  </div>
+  <hr class="rssr-hr rssr-reblog-header-divider">
+` + (replaceReblogHeader ? "" : `<!-- End RSS-Reblog Header -->
+`;
+  
+newFull += reblogHeader;
   
   // RSSR OP HEADER
-  //If there was already an OP header in the original post, it is UNCHANGED (No new op header added)
+  // If there was already an OP header in the original post, it is UNCHANGED (No new op header added)
+  // If there was already a Reblog Header in the original post, we also don't add an OP Header (as it would be inaccurate if the src is a reblog!)
 
-let opHeader = `\
-  <!-- RSS-OP Header -->
-    <div class="rssr-section rssr-post-original">
-      <div class="rssr-section-header rssr-op-header">
-        <p><small class="rssr-font rssr-op-header-font" style="vertical-align:middle;padding:0.36em;">
-          <a href="${srcFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-            <img style="max-height:24px;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
-            <b>${srcFeed.displayName}</b>
-          </a><i>${`<a href="${srcLink}" target="_blank" rel="noopener noreferrer">posted</a>`}<time class="rssr-datetime" datetime="${"YYYY-MM-DD HH:MM:SS +HHSS"}"> on ${"YYYY-MM-DD"}</time>:</i>
-        </small></p>
-      </div>
-  <!-- End RSS-OP Header -->
+let opHeader = `
+<!-- RSS-OP Header -->
+  <div class="rssr-section rssr-post-original">
+    <div class="rssr-section-header rssr-op-header">
+      <p><small class="rssr-font rssr-op-header-font" style="vertical-align:middle;padding:0.36em;">
+        <a href="${srcFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+          <img style="max-height:24px;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
+          <b>${srcFeed.displayName}</b>
+        </a><i>${postedElement}<time class="rssr-datetime" datetime="${pubDateTime.toISOString()}"> on ${pubDateTime.toLocaleDateString()}</time>:</i>
+      </small></p>
+    </div>
+<!-- End RSS-OP Header -->
 `
+
+if(addOPHeader) newFull += opHeader;
 
   // ORIGINAL POST 
   // The entire original post is placed here -- except the aforemented REBLOG HEADER and REBLOG FOOTER
+newFull += srcFull.slice(opStart, opEnd - opStart);
 
   // ADDENDUM 
   // Only placed if addendum field is not empty
 
-let addendemHeader = `\
-  <!-- RSS-Addendum Header -->
+let addendemHeader = `
+<!-- RSS-Addendum Header -->
+  </div>
+  <hr class="rssr-hr rssr-hr-mid">
+  <div class="rssr-section rssr-post-addendum">
+    <div class="rssr-section-header rssr-addendum-header">
+      <p><small class="rssr-font rssr-addendum-header-font" style="vertical-align:middle;padding:0.36em;">
+        <a href="${destFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+        <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
+        <b>${destFeed.displayName}</b></a> ${addedElement}<time class="rssr-datetime" datetime="${cDateTime.toISOString()}"> on ${cDateTime.toLocaleDateString()}</time>:</i>
+      </small></p>
     </div>
-    <hr class="rssr-hr rssr-hr-mid">
-    <div class="rssr-section rssr-post-addendum">
-      <div class="rssr-section-header rssr-addendum-header">
-        <p><small class="rssr-font rssr-addendum-header-font" style="vertical-align:middle;padding:0.36em;">
-          <a href="${destFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-          <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
-          <b>${destFeed.displayName}</b></a> ${`<i><a href="${destItemLink}" target="_blank" rel="noopener noreferrer">added</a>`}<time class="rssr-datetime" datetime="${"YYYY-MM-DD HH:MM:SS +HHSS"}"> on ${"YYYY-MM-DD"}</time>:</i>
-        </small></p>
-      </div>
-  <!-- End RSS-Addendum Header -->
+<!-- End RSS-Addendum Header -->
 `
-
   // Addendum content goes here
 
+if(addendumText) newFull += addendemHeader + addendumText;
+
   // RSS REBLOG FOOTER 
-  // If there was already a reblog footer in the original post, it is REPLACED by the new footer.
+  // If there was already a reblog footer in the original post, it is REPLACED by the new footer (but only from the hr to the br)
 
-let reblogFooter = `\
-  <!-- RSS-Reblog Footer (Reblog Button) -->
-    </div>
-    <hr class="rssr-hr rssr-footer-divider">
-    <div class="rssr-section rssr-footer">
-      <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;text-color:blue;"><a href="${`https://rssr.purl.org/rss-reblog?&feed=${"destFeed.feedURL (tbd)"}&guid=${"destItem.guid (tbd)"}`}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://www.rssboard.org/images/rss-icon.png"}" alt=""> <b>Reblog via RSS</b></a></small></p>
-      <script async src="${"rssr.purl.org/script"}" charset="utf-8"></script>
-    </div>
+let reblogFooter = `
+<!-- RSS-Reblog Footer (Reblog Button) -->
   </div>
-  <!-- End RSS-Reblog Footer -->
+  <hr class="rssr-hr rssr-footer-divider">
+  <div class="rssr-section rssr-footer">
+    <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;color:blue;"><a href="${rblink}}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://www.rssboard.org/images/rss-icon.png"}" alt=""> <b>Reblog via RSS</b></a></small></p>
+    <script async src="${"rssr.purl.org/script"}"></script>
+  </div>
+  <br class="rssr-footer-end">`+(replaceReblogHeader ? "" : `
+</div>
+<!-- End RSS-Reblog Footer -->
 `
+newFull += reblogFooter + srcFull.slice(opFooterStart,srcFull.length - opFooterStart);
 
-newFull = reblogHeader + opHeader + srcFull + reblogFooter;
 
 //then add  as CDATASection
 
@@ -567,9 +635,9 @@ addLinkGUID = function (newItem, srcLink) {
   if (url != "") {
     url = url.replace(/\$GUID\$/g, guid);
     url = url.replace(/\$POSTNUM\$/g, newFile.querySelectorAll('item').length);
-    newItem.appendChild(newFile.createElement("link")).innerHtml = url; //TODO! chk if encoded
+    newItem.appendChild(newFile.createElement("link")).innerHTML = url; //TODO! chk if encoded
   }
-  return url;
+  return [url,guid];
 }
   // The reblog <category> is added, if not already present. Additional tags provided by the user are added as categories.
 addCategories = function(newItem) {
@@ -617,11 +685,23 @@ addEnclosure = function (newItem, enclosure){
 //13. The user may download or copy the post (as an html file or a markdown file)
 */
 
-
-
-
-
-
-
+// returns a regex to find the given tag containing the given value for the given attribute
+// uses whitespace delimination: i.e. matches class="val1 val2" for either val1 or val2
+//   - note: only works with attributes with stringlike values
+// for wildcard: pass \\w+ for tag, \\w+ for attr, or [^"\\s]+ for value
+//   - pass "", null, undefined etc. to default to wildcard 
+//   - if both attr and value are undefined, only looks for a tag
+//   - 1st, 2nd, and 3rd capturing groups are the contents
+getTagAttrVal = function(tag, attr, value, flags="") {
+  if(!tag) tag = '\\w+';
+  if (attr === undefined && value === undefined){
+    return new RegExp(`<\s*(${tag})\s(?:(?:[^">]|"[^"]*")*\s)*>`,flags)
+  }
+  if(!attr) attr = '\\w+';
+  if(!value) value = '[^"\\s]+';
+  let rxp = new RegExp(`<\\s*(${tag})\\s(?:(?:[^">]|"[^"]*")*\\s)*(${attr})\\s*=\s*"(?:[^"]*\\s)*(${value})(\\s[^"]*)*"[^>]*>`, flags);
+  return rxp;
+}
+// <\\s*(${tag})\\s([^>]*\\s)*(${attr})\\s*=\\s*"([^"]*\\s)*(${value})(\\s[^"]*)*"[^>]*>
 
 
