@@ -606,7 +606,7 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,d
   }
 
   // rb button link
-  rblink = `purl.org/rssr/reblog?&feed=${encodeURIComponent(destFeed.feedURL)}&guid=${encodeURIComponent(destItemGUID)}`;
+  rblink = `https://purl.org/rssr/reblog?&feed=${encodeURIComponent(destFeed.feedURL)}&guid=${encodeURIComponent(destItemGUID)}`;
   if(destItemLink) rblink += `&link=${encodeURIComponent(destItemLink)}`;
   if(isCustomDisplayName) rblink += `&name=${encodeURIComponent(destFeed.displayName)}`;
   if(isCustomDisplayIcon) rblink += `&icon=${encodeURIComponent(destFeed.displayIcon)}`;
