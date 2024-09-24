@@ -1,0 +1,18 @@
+
+  .rssr-font {
+    font-family:Helvetica,Arial,sans-serif;
+    font-size:12px;
+    /*vertical-align:middle; /* Moved to inline*/
+  }
+  .rssr-reblog-button {
+    border-radius:0.36em;
+    background-color:#E17831;
+    color:#ffffff;
+    text-decoration:none;
+    /*padding:0.36em; /* Moved to inline*/
+    /*vertical-align:middle; /* Moved to inline*/
+  }
+  .rssr-reblog-button:hover {
+    background-color:#ffba8c;
+    color:#ffffff;
+  }
