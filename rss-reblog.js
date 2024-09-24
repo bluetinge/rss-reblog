@@ -732,7 +732,7 @@ let reblogFooter = (replaceFooter ? "" : `
   </div>
   `)+`<hr class="rssr-hr rssr-footer-divider">
   <div class="rssr-section rssr-footer">
-    <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;color:blue;"><a href="${rblink}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://www.rssboard.org/images/rss-icon.png"}" alt=""> <b>Reblog via RSS</b></a></small></p>
+    <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;color:blue;"><a href="${rblink}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://purl.org/rssr/rss-icon"}" alt=""> <b>Reblog via RSS</b></a></small></p>
     <script async src="${"https://purl.org/rssr/script"}"></script>
   </div>`+(replaceFooter ? "" : `
 </div>
