@@ -107,18 +107,18 @@ function saveFeed(toSave, filename) {
 initRSSReblogMain = function() {
   
   srcFeed = {
-    feedURL:null,     // Provided via URLSearchParams
+    feedURL:null,     // Provided via URLSearchParams -- this is the literal link to an rss.xml
     guid:null,        // Provided via URLSearchParams
     postLink:null,    // Provided via URLSearchParams
     displayIcon:null, // Provided via URLSearchParams OR derived from feedURL
     displayName:null, // Provided via URLSearchParams OR derived from feedURL
     title:"",         // Derived from feedURL
-    link:"",          // Derived from feedURL
+    feedWebsite:"",   // Derived from feedURL -- this may link to an rss.xml, or it may link to a website in general
   };
   srcItem = null;
   destFeed = {
     feedURL:"",          // from user input (link) but could be from file
-    link:null,           // from file
+    feedWebsite:null,           // from file
     filename:"rss.xml",  //from filename
     customDisplayName:"", //from user
     customDisplayIcon:"" //from user
@@ -143,7 +143,7 @@ initRSSReblogMain = function() {
   //Error check (should have url set and at least one of guid or postLink)
   let err = false, errText = `I wasn't able to parse the URL <${pageURL}>:\n`;
   if(!srcFeed.feedURL) { errText += ` - I couldn't find a "feed" parameter in the URL. This should be a link to an RSS feed.\n`; err = true;}
-  if(!srcFeed.guid && !srcFeed.link) { errText += ` - I couldn't find a "guid" or "link" parameter in the URL; at least one is required in order to load the correct post. This parameter must match exactly one item within the feed.\n`; err = true; }
+  if(!srcFeed.guid && !srcFeed.postLink) { errText += ` - I couldn't find a "guid" or "link" parameter in the URL; at least one is required in order to load the correct post. This parameter must match exactly one item within the feed.\n`; err = true; }
   errText += "\n Parameters begin after ? and are delimited with & (i.e., www.example.com/page?&param1=value1&param2=value2)\n"
   
   if (err) throw new Error(errText);
@@ -218,14 +218,14 @@ loadSrc = function() {
   
   /* Loading via RSS2JSON */
   srcFeed.title = srcFeed.json.feed.title;
-  srcFeed.link = srcFeed.json.feed.link;
+  
   srcItem = null;
   let errText = "I had trouble loading the feed. These are the problems I found:\n";
   
   // try given elements 
   if (!srcItem && srcFeed.guid) try { srcItem = loadByGUID(srcFeed.guid, srcFeed.json.items); }
   catch (e) { errText += " - "+e.message+"\n"; }
-  if (!srcItem && srcFeed.link) try { srcItem = loadByLink(srcFeed.link, srcFeed.json.items); }
+  if (!srcItem && srcFeed.postLink) try { srcItem = loadByLink(srcFeed.postLink, srcFeed.json.items); }
   catch (e) { errText += " - "+e.message+"\n"; }
   
   // try again, but with adding https:// if not present
@@ -233,9 +233,9 @@ loadSrc = function() {
     try { srcItem = loadByGUID("https://"+srcFeed.guid, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
     if (!srcItem) try { srcItem = loadByGUID("http://"+srcFeed.guid, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
   }
-  if (!srcItem && srcFeed.link && !srcFeed.link.startsWith("http")) {
-    try { srcItem = loadByLink("https://"+srcFeed.link, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
-    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.link, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  if (!srcItem && srcFeed.postLink && !srcFeed.postLink.startsWith("http")) {
+    try { srcItem = loadByLink("https://"+srcFeed.postLink, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.postLink, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
   }
   
   // try again, but with removing http:// or https:// if present (and trying the other one)
@@ -247,13 +247,13 @@ loadSrc = function() {
     try { srcItem = loadByGUID(srcFeed.guid.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
     if (!srcItem) try { srcItem = loadByGUID("https://"+srcFeed.guid.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
   }
-  if (!srcItem && srcFeed.link && srcFeed.link.startsWith("https://")) {
-    try { srcItem = loadByLink(srcFeed.link.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
-    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.link.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  if (!srcItem && srcFeed.postLink && srcFeed.postLink.startsWith("https://")) {
+    try { srcItem = loadByLink(srcFeed.postLink.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.postLink.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
   }
-  if (!srcItem && srcFeed.link && srcFeed.link.startsWith("http://")) {
-    try { srcItem = loadByLink(srcFeed.link.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
-    if (!srcItem) try { srcItem = loadByLink("https://"+srcFeed.link.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  if (!srcItem && srcFeed.postLink && srcFeed.postLink.startsWith("http://")) {
+    try { srcItem = loadByLink(srcFeed.postLink.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByLink("https://"+srcFeed.postLink.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
   }
   
   // could do additional error checking but that's enough for now, methinks
@@ -261,9 +261,14 @@ loadSrc = function() {
       errorTop.innerText = errText;
       return;
   }
+
+  // feedWebsite is sometimes a link to a website, blog, etc. instead of a feed
+  srcFeed.feedWebsite = srcFeed.json.feed.link;
+  if(!srcFeed.feedWebsite) srcFeed.feedWebsite = srcFeed.feedURL;
+  // use provided feedURL if it cant be found
   
-  // scrub srcFeed.link, srcFeed.displayIcon, and srcItem.link to prevent XSS, in theory
-  srcFeed.link = scrubLink(srcFeed.link);
+  // scrub srcFeed.feedWebsite, srcFeed.displayIcon, and srcItem.link to prevent XSS, in theory
+  srcFeed.feedWebsite = scrubLink(srcFeed.feedWebsite);
   srcFeed.displayIcon = scrubLink(srcFeed.displayIcon);
   srcItem.link = scrubLink(srcItem.link);
   
@@ -313,7 +318,7 @@ getDestFromLink = function() {
         destFeed.feedURL, 
         function(result) { 
           destFeed.json = result; 
-          destFeed.link = destFeed.json.feed.url
+          destFeed.feedWebsite = destFeed.json.feed.url
           destFeed.title = destFeed.json.feed.title;
           cachedDestFeedLink = destFeed;
           loadDest();
@@ -341,19 +346,25 @@ async function getDestFromFile() {
       if(destFeed.file.querySelector('channel').parentNode !== destFeed.file.querySelector('rss')) {
         throw new Error("Channel is not a child element of RSS");
       }
+      // get feedURL (rss.xml) and feedWebsite (link element)
+      destFeed.feedURL = null;
+      destFeed.feedWebsite = null;
       for (e of destFeed.file.getElementsByTagNameNS("","link")) {
         if(e.parentNode === destFeed.file.querySelector('channel')){
-          destFeed.link = e.textContent.trim();
-          destFeed.feedURL = destFeed.link;
+          destFeed.feedWebsite = e.textContent.trim();
           break;
         }
       }
+      if (!destFeed.feedWebsite) throw new Error("RSS documents are required to have a <link> element as a child of the <channel> element");
+      
       for (e of destFeed.file.getElementsByTagNameNS("http://www.w3.org/2005/Atom","link")) {
         if(e.parentNode === destFeed.file.querySelector('channel') && e.getAttribute("rel") == "self"){
           destFeed.feedURL = e.getAttribute("href");
           break;
         }
       }
+      if (!destFeed.feedURL) throw new Error('Please add an <atom:link> element to <channel>, with attributes rel="self" and href=<a URL to your rss.xml>');
+      
       for (e of destFeed.file.getElementsByTagNameNS("","title")) {
         if(e.parentNode === destFeed.file.querySelector('channel')){
           destFeed.title = e.textContent.trim();
@@ -369,11 +380,11 @@ async function getDestFromFile() {
       let errText = "";
       if(destFeed.file && destFeed.file.querySelector){
         if (!destFeed.file.querySelector("title")) errText += ", feed title not found";
-        if (!destFeed.file.querySelector("link")) errText += ", feed link not found";
         if (!destFeed.file.querySelector("channel")) errText += ", channel element not found";
         if (!destFeed.file.querySelector("rss")) errText += ", rss element not found";
       }
-      if(errText == "") errText = e;
+      if(e.message.includes("atom:link")) errText = e.message + errText;
+      else if(errText == "") errText = e.message + errText;
       else errText = errText.substring(2);
       errorDestFeed("Error when reading file: "+errText);
     }
@@ -386,6 +397,21 @@ async function getDestFromFile() {
   //4. On load, display the determined display name and pfp.
 loadDest = function() {
   console.log(destFeed);
+  
+  // has a default been saved in a file?
+  for (e of destFeed.file.getElementsByTagNameNS("https://purl.org/rssr/terms/","displayName")) {
+    if(e.textContent.trim() != "") {
+      destFeed.customDisplayName = e.textContent.trim();
+      break;
+    }
+  }
+  for (e of destFeed.file.getElementsByTagNameNS("https://purl.org/rssr/terms/","displayIcon")) {
+    if(e.textContent.trim() != "") {
+      destFeed.customDisplayIcon = e.textContent.trim();
+      break;
+    }
+  }
+  
   if(destFeed.customDisplayName == ""){
     document.getElementById("destFeedTitleBox").value = destFeed.title;
     document.getElementById("destFeedTitle").innerText = destFeed.title;
@@ -396,7 +422,7 @@ loadDest = function() {
   }
 
   if(destFeed.customDisplayIcon == ""){
-    document.getElementById('destFeedIcon').src = getFavicon(destFeed.link); 
+    document.getElementById('destFeedIcon').src = getFavicon(destFeed.feedWebsite); 
   }
   else {
     document.getElementById('destFeedIcon').src = destFeed.customDisplayIcon;
@@ -443,7 +469,7 @@ editPFP = function() {
   if(PFPLink === null) return;
   else if(PFPLink === ""){
     destFeed.customDisplayIcon = "";
-    PFPLink = getFavicon(destFeed.link);
+    PFPLink = getFavicon(destFeed.feedWebsite);
     document.getElementById('destFeedIcon').alt = "";
   }
   else {
@@ -520,7 +546,7 @@ generateRSS = function() {
   updateLastBuildDate(newFile.querySelector("channel"),dateTime);
   
   // If the user selected it, the display name and icon are saved as defaults within the feed element using the "rssr:displayName" and "rssr:icon" elements
-  addDefaultDisplayNameIcon(newFile.querySelector("channel"));
+  saveDefaultDisplayNameIcon(newFile.querySelector("channel"));
   
   // TODO Preview is generated
   
@@ -579,7 +605,6 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,d
   // TODO: Encode these so that " and stuff don't mess literally everything up
   
   // default display name and icon vs. custom
-  
   let isCustomDisplayName = false;
   destFeed.displayName = destFeed.title;
   if(destFeed.customDisplayName) {
@@ -663,11 +688,11 @@ let reblogHeader = (replaceReblogHeader ? "" : `
 <div class="rssr-item">
   `)+`<div class="rssr-section rssr-reblog-header">
     <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
-      <a href="${destFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+      <a href="${destFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
         <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
         <b>${destFeed.displayName}</b>
       </a> <i> reblogged a ${postElement} from&nbsp; </i> 
-      <a href="${srcFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
+      <a href="${srcFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
         <img style="max-height:2em;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
         <b>${srcFeed.displayName}</b>
       </a><i><time class="rssr-datetime" datetime="${cDateTime.toISOString()}">on ${cDateTime.toLocaleDateString()}:</time></i>
@@ -688,7 +713,7 @@ let opHeader = `
   <div class="rssr-section rssr-post-original">
     <div class="rssr-section-header rssr-op-header">
       <p><small class="rssr-font rssr-op-header-font" style="vertical-align:middle;padding:0.36em;">
-        <a href="${srcFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+        <a href="${srcFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
           <img style="max-height:24px;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
           <b>${srcFeed.displayName}</b>
         </a><i>${postedElement}<time class="rssr-datetime" datetime="${pubDateTime.toISOString()}"> on ${pubDateTime.toLocaleDateString()}</time>:</i>
@@ -713,7 +738,7 @@ let addendumHeader = `
   <div class="rssr-section rssr-post-addendum">
     <div class="rssr-section-header rssr-addendum-header">
       <p><small class="rssr-font rssr-addendum-header-font" style="vertical-align:middle;padding:0.36em;">
-        <a href="${destFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+        <a href="${destFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
         <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
         <b>${destFeed.displayName}</b></a> ${addedElement}<time class="rssr-datetime" datetime="${cDateTime.toISOString()}"> on ${cDateTime.toLocaleDateString()}</time>:</i>
       </small></p>
@@ -821,8 +846,52 @@ updateLastBuildDate = function(channel,dateTime) {
 }
   
   // If the user selected it, the display name and icon are saved as defaults within the feed element using the "rssr:displayName" and "rssr:icon" elements
-addDefaultDisplayNameIcon = function(channel) {
+saveDefaultDisplayNameIcon = function(channel) {
+
+  if(destFeed.customDisplayName) destFeed.displayName = destFeed.customDisplayName;
+  else destFeed.displayName = destFeed.title;
   
+  if(destFeed.customDisplayIcon) destFeed.displayIcon = destFeed.customDisplayIcon;
+  else destFeed.displayIcon = document.getElementById("destFeedIcon").src;
+  
+  if(document.getElementById("saveName").checked || document.getElementById("saveIcon").checked){
+    // is rssr: namespace already there
+    if(!newFile.querySelector("rss").getAttributeNS("http://www.w3.org/2000/xmlns/","rssr")){
+      newFile.querySelector("rss").setAttributeNS("http://www.w3.org/2000/xmlns/","xmlns:rssr","https://purl.org/rssr/terms/");
+    }
+    
+    // has a default been saved in a file?
+    for (e of newFile.getElementsByTagNameNS("https://purl.org/rssr/terms/","displayIcon")) {
+      if(e.textContent.trim() != "") {
+        destFeed.customDisplayIcon = e.textContent.trim();
+        break;
+      }
+  }
+  
+    if(document.getElementById("saveName").checked) {
+      let skip = false;
+      for (e of newFile.getElementsByTagNameNS("https://purl.org/rssr/terms/","displayName")) {
+        if(e.textContent.trim() != "") {
+          e.textContent = destFeed.displayName.trim();
+          skip = true;
+          break;
+        }
+      }
+      if(!skip) channel.appendChild(newFile.createElementNS("https://purl.org/rssr/terms/","rssr:displayName")).textContent = destFeed.displayName.trim();
+    }
+
+    if(document.getElementById("saveIcon").checked) {
+      let skip = false;
+      for (e of newFile.getElementsByTagNameNS("https://purl.org/rssr/terms/","displayIcon")) {
+        if(e.textContent.trim() != "") {
+          e.textContent = destFeed.displayIcon.trim();
+          skip = true;
+          break;
+        }
+      }
+      if(!skip) channel.appendChild(newFile.createElementNS("https://purl.org/rssr/terms/","rssr:displayIcon")).textContent = destFeed.displayIcon.trim();
+    }
+  }
 }
 
 //JSON enclosure object -> XML
