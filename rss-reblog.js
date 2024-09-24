@@ -68,6 +68,7 @@ initRSSReblogWrapper = function() {
     console.error(e);
   }
 }
+
 // and also these 
 // i know i should really be making my own things but im so tired 
 function serialize(toSerialize) {
@@ -151,13 +152,20 @@ initRSSReblogMain = function() {
   getExternalFeed(
     srcFeed.feedURL, 
     function(result) { 
+      try{
       console.log(result);
       // RSS2JSON-specific
       srcFeed.json = result;
       loadSrc();
+      } catch(e) {
+         errorTop.innerText = e.toString();
+        console.error(e);
+      }
     },
     function(result) { 
-      throw(new Error(`I tried to load the feed <${srcFeed.url}>, but I ran into an error. Remember, this needs to be a feed to an RSS file on the Internet.\nCheck the developer console for more details.`)); 
+      e = new Error(`I tried to load the feed <${srcFeed.feedURL}>, but I ran into an error. Remember, this needs to be a feed to an RSS file on the Internet.\nCheck the developer console for more details.`);
+      errorTop.innerText = e.toString();
+      console.error(e);
     }
   )
 }
@@ -335,7 +343,7 @@ async function getDestFromFile() {
       }
       for (e of destFeed.file.getElementsByTagNameNS("","link")) {
         if(e.parentNode === destFeed.file.querySelector('channel')){
-          destFeed.link = e.innerHTML;
+          destFeed.link = e.textContent.trim();
           destFeed.feedURL = destFeed.link;
           break;
         }
@@ -348,7 +356,7 @@ async function getDestFromFile() {
       }
       for (e of destFeed.file.getElementsByTagNameNS("","title")) {
         if(e.parentNode === destFeed.file.querySelector('channel')){
-          destFeed.title = e.innerHTML;
+          destFeed.title = e.textContent.trim();
           break;
         }
       }
@@ -523,9 +531,10 @@ generateRSS = function() {
 // I should really not have functions with 9 arguments...
 addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,destItemLink,destItemGUID,srcTitle,cDateTime,pubDateTime) {
   
-  // If both description and content:encoded are present, description is assumed to be a summary. Therefore, only the REBLOG-HEADER step is applied to description, while all steps are applied to content:encoded.
-  // Exception: if they are literally identical, they remain literally identical.
-  // If only one or the other is present in the original, that remains true.
+  // As per the RSS spec, if only a <description> or <content:encoded> element is provided, then the <description> element is preferred.
+  // If both <description> and <content:encoded> are provided, and they are not literally identical, then <description> is assumed to be a summary. 
+  // - Therefore, only the REBLOG-HEADER step is applied to description, while all steps are applied to content:encoded.
+  // If they *are* literally identical, then only a <description> is created. 
   // if both srcContent and srcDescription are empty, the post is just srcLink
   
   // Post content is stripped of unwanted elements FIRST
@@ -723,31 +732,32 @@ let reblogFooter = (replaceFooter ? "" : `
   </div>
   `)+`<hr class="rssr-hr rssr-footer-divider">
   <div class="rssr-section rssr-footer">
-    <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;color:blue;"><a href="${rblink}}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://www.rssboard.org/images/rss-icon.png"}" alt=""> <b>Reblog via RSS</b></a></small></p>
+    <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;color:blue;"><a href="${rblink}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://www.rssboard.org/images/rss-icon.png"}" alt=""> <b>Reblog via RSS</b></a></small></p>
     <script async src="${"rssr.purl.org/script"}"></script>
   </div>`+(replaceFooter ? "" : `
 </div>
 <!-- End RSS-Reblog Footer -->
 `);
 
-newFull += reblogFooter + srcFull.slice(opFooterStart,srcFull.length);
+  newFull += reblogFooter + srcFull.slice(opFooterStart,srcFull.length);
 
-//add content NS if needed
-if(!newFile.querySelector("rss").getAttributeNS("http://www.w3.org/2000/xmlns/","content")){
-  newFile.querySelector("rss").setAttributeNS("http://www.w3.org/2000/xmlns/","xmlns:content","http://purl.org/rss/1.0/modules/content/");
+  //add content NS if needed
+  if(!newFile.querySelector("rss").getAttributeNS("http://www.w3.org/2000/xmlns/","content")){
+    newFile.querySelector("rss").setAttributeNS("http://www.w3.org/2000/xmlns/","xmlns:content","http://purl.org/rss/1.0/modules/content/");
+  }
+
+  //then add as CDATASection
+  let descElement = newFile.createElement("description");
+  newItem.appendChild(descElement)
+  descElement.appendChild(newFile.createCDATASection(newFull)); 
+  //TODO: make it so that the description only has the reblog header if conditions are met
+
+  // TODO: content:encoded only if description is a summary
+  
+  // let contentElement = newFile.createElementNS("http://purl.org/rss/1.0/modules/content/","encoded"); //is this a namespace? I don't even know
+  // newItem.appendChild(contentElement)
+  // contentElement.appendChild(newFile.createCDATASection(newFull));
 }
-
-//then add as CDATASection
-let contentElement = newFile.createElementNS("http://purl.org/rss/1.0/modules/content/","encoded"); //is this a namespace? I don't even know
-let descElement = newFile.createElement("description");
-
-newItem.appendChild(descElement)
-descElement.appendChild(newFile.createCDATASection(newFull)); //TODO: make it so that the description only has reblog header if conditions are met
-
-newItem.appendChild(contentElement)
-contentElement.appendChild(newFile.createCDATASection(newFull));
-
-}  
 
   // If a link was provided by the current user, the link is updated. Otherwise, it stays the same (*XSS vector? Javascript:, etc should be disallowed)
     // The patterns $GUID$ and $POST_NUM$ are replaced, respectively. (Escape by encoding the $ as %24
@@ -805,7 +815,9 @@ addPubDate = function(newItem,dateTime) {
 
   // The last build date is updated to the current date/time.
 updateLastBuildDate = function(channel,dateTime) {
-    channel.appendChild(newFile.createElement("lastBuildDate")).innerHTML = dateTime.toUTCString();
+    buildElem = channel.querySelector("lastBuildDate");
+    if(!buildElem) channel.appendChild(newFile.createElement("lastBuildDate")).innerHTML = dateTime.toUTCString();
+    else buildElem.innerHTML = dateTime.toUTCString();
 }
   
   // If the user selected it, the display name and icon are saved as defaults within the feed element using the "rssr:displayName" and "rssr:icon" elements

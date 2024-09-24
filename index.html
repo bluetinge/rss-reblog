@@ -1,35 +1,136 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Sample Page</title>
+<title>RSS Reblogger</title>
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
 
-<style>
-body {
-	background-color:#525c58;
-}
-.title {
-	color:#ffffff;
-    text-shadow: 2px 2px 4px #000000;
-    margin: 24px;
-}
-.rssr-item {
-	background-color: #aed4c4;
-    padding: 24px;
-    margin: 24px;
-    border-radius:12px;
-    border:solid;
-    border-width:1px;
-    border-color:#5a6e65;
-    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-}
-</style>
+  <!-- Generic styling -->
+  <style>
+  .centerbox {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  input{
+    width: 75%;
+  }
+  button{
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+  
+  body {
+    background-color:#525c58;
+  }
+  
+  code {
+    
+  }
+  
+  label {
+    margin:2px;
+  }
+  
+  
+  .title {
+    color:#ffffff;
+      text-shadow: 2px 2px 4px #000000;
+      margin: 24px;
+  }
+  
+  .card {
+    background-color: #aed4c4;
+      padding: 24px;
+      margin: 24px;
+      border-radius:12px;
+      border:solid;
+      border-width:1px;
+      border-color:#5a6e65;
+      box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  }
 
-</head>
+  .section {
+    padding: 10px;
+  }
+  
+  .get-dest-feed {
+    padding-bottom: 0px;
+  }
+  
+  .dest-feed-icon {
+    max-height: 24px;
+    vertical-align: middle;
+    border: 1px solid transparent;
+  }
+  .dest-feed-icon:hover {
+    border: 1px solid blue;
 
-<body>
-<div class="container">
-<h2 class="title">Feed title</h2>
+  }
+  
+  .security-box p {
+    margin-bottom: 6px;
+  }
+  
+  .radio-options {
+    padding-left: 6px;
+  } 
+
+  .radio-options label {
+    margin: 0px;
+  }
+  
+  input {
+    margin: 0px !important;
+    vertical-align: middle;
+  }
+  
+  
+  .add-guid p {
+    padding-left: 6px;
+  }
+  
+  .btn-generate {
+    background-color: #178054;
+    border-color: #167d52;
+  }
+  .btn-generate:hover {
+    background-color: #1a915f !important;
+  }
+  .btn-generate:focus {
+    border-color: #167d52;
+    background-color: #1a8a5b
+  }
+  .btn-generate:active { 
+    background-color: #1d9663 !important; 
+  }
+  .btn-generate:disabled { 
+    background-color: #000000 !important; 
+    border-color: #000000 !important;
+    color: #bfbfbf !important;
+  }
+  </style>
+  
+  <!--Stylizing for the RSS Reblog button (only works on some feed readers)-->
+  <style>
+  .rssr-font {
+    font-family:Helvetica,Arial,sans-serif;
+    font-size:12px;
+    /*vertical-align:middle; /* Moved to inline*/
+  }
+  .rssr-reblog-button {
+    border-radius:0.36em;
+    background-color:#E17831;
+    color:#ffffff;
+    text-decoration:none;
+    /*padding:0.36em; /* Moved to inline*/
+    /*vertical-align:middle; /* Moved to inline*/
+  }
+  .rssr-reblog-button:hover {
+    background-color:#ffba8c;
+    color:#ffffff;
+  }
+  </style>
+
 
 <!--Stylizing for the RSS Reblog button (only works on some feed readers)-->
 <style>
@@ -52,66 +153,98 @@ body {
 }
 </style>
 
-<!-- RSS-Reblog Header -->
-<div class="rssr-item">
-  <div class="rssr-section rssr-reblog-header">
-    <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
-      <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
-        <img style="max-height:24px;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt=""> 
-        <b>ThisBlogger</b>
-      </a> <i> reblogged a <a href="" target="_blank" rel="noopener noreferrer">post</a> from&nbsp; </i> 
-      <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
-        <img style="max-height:2em;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt="">
-        <b>OtherReblogger</b>
-      </a><i><time class="rssr-datetime" datetime="YYYY-MM-DD HH:MM:SS +HHSS">on YYYY-MM-DD:</time></i>
-    </small></p>
-  </div>
-  <hr class="rssr-hr rssr-reblog-header-divider">
-<!-- End RSS-Reblog Header -->
+<script>
 
-<!-- RSS-OP Header -->
-  <div class="rssr-section rssr-post-original">
-    <div class="rssr-section-header rssr-op-header">
-      <p><small class="rssr-font rssr-op-header-font" style="vertical-align:middle;padding:0.36em;">
-        <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-          <img style="max-height:24px;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt="">
-          <b>OriginalPoster</b>
-        </a><i><a href="" target="_blank" rel="noopener noreferrer">posted</a><time class="rssr-datetime" datetime="YYYY-MM-DD HH:MM:SS +HHSS"> on YYYY-MM-DD</time>:</i>
-      </small></p>
-    </div>
-<!-- End RSS-OP Header -->
 
-    <h3>Post title</h3>
+  makeReblogURL = function() {
+    let feedLink = document.getElementById("srcFeedLinkInput").value.trim();
+    if (!feedLink.includes('://')) feedLink = "https://" + feedLink;
+    let postLink = document.getElementById("srcPostLinkInput").value.trim();
+    let guid = document.getElementById("srcPostGUIDInput").value;
+    
+    let feedComp = ""; linkComp = ""; guidComp = "";
+    if(feedLink)  feedComp = "&feed="+encodeURIComponent(feedLink);
+    if(postLink)  linkComp = "&link="+encodeURIComponent(postLink);
+    if(guid)  guidComp = "&guid="+encodeURIComponent(guid);
+    let reblogURL = 'https://rssr.bluetinge.dev/rss-reblog.html?' + feedComp + linkComp + guidComp;
+    
+        
+    console.log(reblogURL, feedComp,linkComp,guidComp, ((feedComp && (guidComp || linkComp))) );
+    
+    if(feedComp && (guidComp || linkComp)) {
+      return reblogURL;
+    }
+    else return null;
+  }
+  
+  followReblogURL = function() {
+    let reblogURL = makeReblogURL();
+    if (reblogURL) {
+      window.location.href = reblogURL;
+      document.getElementById("results").innerHTML = "<p>Loading...</p>";
+    }
+    
+  }
+  
+  displayReblogURL = function() {
+    let reblogURL = makeReblogURL();
+    if (reblogURL) {
+      document.getElementById("results").innerHTML = "<p>Generated link: <code><a href="+reblogURL+">"+reblogURL+"</a></code></p>";
+      
+      let buttonCode = '<!-- RSS Reblog Button -->\n\
+  <hr class="rssr-hr rssr-footer-divider">\n\
+  <div class="rssr-section rssr-footer">\n\
+    <p><small class="rssr-font rssr-footer-font" style="vertical-align:middle;text-color:blue;"><a href="' + reblogURL + '" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt=""> <b>Reblog via RSS</b></a></small></p>\n\
+    <script async src="purl.org/rssr/script" charset="utf-8"></sc'+'ript>\n\
+  </div>\n\
+<!-- End RSS Reblog Button -->';
 
-    <p> Post content </p>
+      document.getElementById("results2label").innerHTML = '<p style="margin-bottom:0px;padding-bottom:0px;">You can use the code below to embed a reblog link in your website:</p>';
+      document.getElementById("results2").innerHTML = '<textarea style="width:100%; margin:20px; margin-top:10px; font-family: monospace" rows="10">'+buttonCode+'</textarea>';
+    }
+  }
 
-<!-- RSS-Addendum Header -->
-  </div>
-  <hr class="rssr-hr rssr-addendum-divider">
-  <div class="rssr-section rssr-post-addendum">
-    <div class="rssr-section-header rssr-addendum-header">
-      <p><small class="rssr-font rssr-addendum-header-font" style="vertical-align:middle;padding:0.36em;">
-        <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-        <img style="max-height:24px;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt="">
-        <b>ThisBlogger</b></a> <i><a href="" target="_blank" rel="noopener noreferrer">added</a><time class="rssr-datetime" datetime="YYYY-MM-DD HH:MM:SS +HHSS"> on YYYY-MM-DD</time>:</i>
-      </small></p>
-    </div>
-<!-- End RSS-Addendum Header -->
+  checkValid = function() {
+    let reblogURL = makeReblogURL();
+    if (reblogURL) {
+      document.getElementById("reblogPageButton").disabled = false;
+      document.getElementById("makeLinkButton").disabled = false;
+    }
+    else {
+      document.getElementById("reblogPageButton").disabled = true;
+      document.getElementById("makeLinkButton").disabled = true;
+    }
 
-    <p> Additional comments &#128257; </p>
+  }
+  
+</script>
 
-<!-- RSS-Reblog Footer (Reblog Button) -->
-  </div>
-  <hr class="rssr-hr rssr-footer-divider">
-  <div class="rssr-section rssr-footer">
-    <p><small class="rssr-font rssr-footer-font" style="vertical-align:middle;text-color:blue;"><a href="" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="https://www.rssboard.org/images/rss-icon.png" alt=""> <b>Reblog via RSS</b></a></small></p>
-    <script async src="" charset="utf-8"></script>
-  </div>
-</div>
-<!-- End RSS-Reblog Footer -->
+</head>
 
-<div class="rssr-item">
+<body>
+<div class="container">
+  <h2 class="title">RSS Reblogger</h2>
 	
+  <div class="card">
+
+     <p> Use this site to create a reblog of a post on any RSS feed, or to generate a button to allow others to share your posts. </p>
+     <p> <label for="srcFeedLinkInput">  Link to feed:</label> <input type="text" id="srcFeedLinkInput" name="srcFeedLinkInput" placeholder="https://blog.com/rss.xml" oninput="checkValid()"> </p>
+     <p> And provide either: <br>
+         <label for="srcPostLinkInput">  Link to post:</label> <input type="text" id="srcPostLinkInput" name="srcPostLinkInput" placeholder="https://blog.com/somepost" oninput="checkValid()">  <br>
+     <p> <label for="srcPostGUIDInput">  Post GUID:&nbsp;&nbsp;&nbsp;</label> <input type="text" id="srcPostGUIDInput" name="srcPostGUIDInput" placeholder="Look in <guid>...</guid>" oninput="checkValid()"> 
+     </p>
+
+    <div class="centerbox">
+      <button type="button" class="btn btn-info btn-generate" id="reblogPageButton" onclick="followReblogURL()" disabled> <span class="glyphicon glyphicon-share"></span> Reblog </button>
+      <button type="button" class="btn btn-info btn-generate" id="makeLinkButton" onclick="displayReblogURL()" disabled> <span class="glyphicon glyphicon-plus-sign"></span> Generate share link </button>
+    </div>
+    
+    <div class="centerbox" id="results"></div>
+    <div class="centerbox" id="results2label"></div>
+    <div class="centerbox" id="results2"></div>
+  
+  </div>
+  
 </div>
 </body>
 </html>
