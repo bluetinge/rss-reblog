@@ -127,8 +127,8 @@ initRSSReblogMain = function() {
   
   //1. Autofill the source feed and source guid.
   
-  let pageURL = "rssr.dev/reblog?&feed=https%3A%2F%2Fwww.bluetinge.dev%2Frss.xml&guid=https%3A%2F%2Fbluetinge.github.io%2Fregex-crossword%2F8"; //sample
-  // let pageURL = window.location.href; //uncomment to use actual URL
+  //let pageURL = "rssr.dev/reblog?&feed=https%3A%2F%2Fwww.bluetinge.dev%2Frss.xml&guid=https%3A%2F%2Fbluetinge.github.io%2Fregex-crossword%2F8"; //sample
+  let pageURL = window.location.href; //uncomment to use actual URL
   
   searchParams = new URLSearchParams(pageURL);
   srcFeed.feedURL = scrubLink(searchParams.get("feed"));
