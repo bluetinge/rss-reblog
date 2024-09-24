@@ -176,7 +176,7 @@ loadByGUID = function(guid,items) {
   /* Loading via RSS2JSON */
   let retItem = null;
   for (item of items) {
-    if (guid === item.guid){
+    if (guid === item.guid || (guid.trim() && guid.trim() === item.guid.trim()) ){
       if (retItem != null) {
         throw new Error(`The GUID ${guid} occurs multiple times in the source feed`);
       }
@@ -193,7 +193,7 @@ loadByLink = function(postLink,items) {
   /* Loading via RSS2JSON */
   let retItem = null;
   for (item of items) {
-    if (postLink === item.link){
+    if (postLink === item.link || (postLink.trim() && postLink.trim() === item.link.trim()) ){
       if (retItem != null) {
         throw new Error(`The link ${postLink} occurs multiple times in the source feed`);
       }
