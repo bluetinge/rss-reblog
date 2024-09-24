@@ -18,7 +18,7 @@ getExternalFeed = function (feedURL, successFunc, errorFunc) {
 }
 
 getFavicon = function(feedURL) {
-  let srcLink = 'http://www.google.com/s2/favicons?size=24&domain=' + feedURL;
+  let srcLink = 'https://www.google.com/s2/favicons?size=24&domain=' + feedURL;
   return srcLink; 
 }
 
@@ -56,10 +56,54 @@ async function readRssFile(f) {
 
     return rssDoc;
 }
+// also borrowed 
+const converter = new showdown.Converter()
+
+initRSSReblogWrapper = function() {
+  try {
+    initRSSReblogMain();
+  }
+  catch(e) {
+    errorTop.innerText = e.toString();
+    console.error(e);
+  }
+}
+// and also these 
+// i know i should really be making my own things but im so tired 
+function serialize(toSerialize) {
+    let serializer = new XMLSerializer();
+    let xmlString = serializer.serializeToString(toSerialize); // Doesn't indent
+
+    try {
+        console.log(`before format: ${xmlString}`);
+        let format = require('xml-formatter');
+        xmlString = format(xmlString, {
+            indentation: '  ',
+            lineSeparator: '\n',
+            throwOnFailure: false,
+
+        });
+        console.log(`after format: ${xmlString}`);
+        return xmlString;
+    }
+    catch {
+        return xmlString
+    }
+}
+function saveFeed(toSave, filename) {
+    let xmlText = serialize(toSave);
+    xmlFile = new Blob([xmlText], { type: 'text/xml' })
+    const elem = window.document.createElement('a');
+    elem.href = window.URL.createObjectURL(xmlFile);
+    elem.download = filename;
+    document.body.appendChild(elem);
+    elem.click();
+    document.body.removeChild(elem);
+}
+// okay the rest is my code tho
 
 
-
-initRSSReblog = function() {
+initRSSReblogMain = function() {
   
   srcFeed = {
     feedURL:null,     // Provided via URLSearchParams
@@ -95,7 +139,13 @@ initRSSReblog = function() {
   srcFeed.displayIcon = searchParams.get("icon");
   srcFeed.displayName = searchParams.get("name");
   
-  //TODO: error check (should have url set and at least one of guid or postLink)
+  //Error check (should have url set and at least one of guid or postLink)
+  let err = false, errText = `I wasn't able to parse the URL <${pageURL}>:\n`;
+  if(!srcFeed.feedURL) { errText += ` - I couldn't find a "feed" parameter in the URL. This should be a link to an RSS feed.\n`; err = true;}
+  if(!srcFeed.guid && !srcFeed.link) { errText += ` - I couldn't find a "guid" or "link" parameter in the URL; at least one is required in order to load the correct post. This parameter must match exactly one item within the feed.\n`; err = true; }
+  errText += "\n Parameters begin after ? and are delimited with & (i.e., www.example.com/page?&param1=value1&param2=value2)\n"
+  
+  if (err) throw new Error(errText);
 
   //  1.2 Attempt to load the source feed
   getExternalFeed(
@@ -107,17 +157,51 @@ initRSSReblog = function() {
       loadSrc();
     },
     function(result) { 
-      errorTop.innerText = "Error: a feed could not be derived from "+srcFeed.url; 
+      throw(new Error(`I tried to load the feed <${srcFeed.url}>, but I ran into an error. Remember, this needs to be a feed to an RSS file on the Internet.\nCheck the developer console for more details.`)); 
     }
   )
 }
 
   //2. From the source feed, determine if the guid can be found. Load the source pfp and name, and the source item tags.
 
+loadByGUID = function(guid,items) {
+  /* Loading via RSS2JSON */
+  let retItem = null;
+  for (item of items) {
+    if (guid === item.guid){
+      if (retItem != null) {
+        throw new Error(`The GUID ${guid} occurs multiple times in the source feed`);
+      }
+      retItem = item;
+    }
+  }
+  if (retItem == null) {
+    throw new Error(`The GUID ${guid} was not found in the source feed`);
+  }
+  return retItem;
+}
+
+loadByLink = function(postLink,items) {
+  /* Loading via RSS2JSON */
+  let retItem = null;
+  for (item of items) {
+    if (postLink === item.link){
+      if (retItem != null) {
+        throw new Error(`The link ${postLink} occurs multiple times in the source feed`);
+      }
+      retItem = item;
+    }
+  }
+  if (retItem == null) {
+    throw new Error(`The link ${postLink} was not found in the source feed`);
+  }
+  return retItem;
+}
+
 loadSrc = function() {
   
-  // TODO: Allow for loading by link instead
-  // TODO -- Attempt to fix errors by:
+  // Loads by GUID if present, or link if not
+  // Attempt to fix errors by:
   //  - searching for link if guid cannot be found, or vice versa
   //  - removing stuff past the url and searching again
   //  - replace https with http and try again
@@ -128,18 +212,46 @@ loadSrc = function() {
   srcFeed.title = srcFeed.json.feed.title;
   srcFeed.link = srcFeed.json.feed.link;
   srcItem = null;
-  for (item of srcFeed.json.items) {
-    if (srcFeed.guid === item.guid){
-      if (srcItem != null) {
-        errorTop.innerText = "Error: GUID occurs multiple times in feed";
-        return;
-      }
-      srcItem = item;
-    }
+  let errText = "I had trouble loading the feed. These are the problems I found:\n";
+  
+  // try given elements 
+  if (!srcItem && srcFeed.guid) try { srcItem = loadByGUID(srcFeed.guid, srcFeed.json.items); }
+  catch (e) { errText += " - "+e.message+"\n"; }
+  if (!srcItem && srcFeed.link) try { srcItem = loadByLink(srcFeed.link, srcFeed.json.items); }
+  catch (e) { errText += " - "+e.message+"\n"; }
+  
+  // try again, but with adding https:// if not present
+  if (!srcItem && srcFeed.guid && !srcFeed.guid.startsWith("http")) {
+    try { srcItem = loadByGUID("https://"+srcFeed.guid, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByGUID("http://"+srcFeed.guid, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
   }
-  if (srcItem == null) {
-    errorTop.innerText = "Error: GUID not in feed";
-    return;
+  if (!srcItem && srcFeed.link && !srcFeed.link.startsWith("http")) {
+    try { srcItem = loadByLink("https://"+srcFeed.link, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.link, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  
+  // try again, but with removing http:// or https:// if present (and trying the other one)
+  if (!srcItem && srcFeed.guid && srcFeed.guid.startsWith("https://")) {
+    try { srcItem = loadByGUID(srcFeed.guid.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByGUID("http://"+srcFeed.guid.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  if (!srcItem && srcFeed.guid && srcFeed.guid.startsWith("http://")) {
+    try { srcItem = loadByGUID(srcFeed.guid.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByGUID("https://"+srcFeed.guid.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  if (!srcItem && srcFeed.link && srcFeed.link.startsWith("https://")) {
+    try { srcItem = loadByLink(srcFeed.link.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.link.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  if (!srcItem && srcFeed.link && srcFeed.link.startsWith("http://")) {
+    try { srcItem = loadByLink(srcFeed.link.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByLink("https://"+srcFeed.link.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  
+  // could do additional error checking but that's enough for now, methinks
+  if(!srcItem) {
+      errorTop.innerText = errText;
+      return;
   }
   
   // scrub srcFeed.link, srcFeed.displayIcon, and srcItem.link to prevent XSS, in theory
@@ -177,29 +289,34 @@ loadSrc = function() {
 getDestFromLink = function() {
   errorDestFeedInfo.style.display = 'none';
   
-  let oldLink = destFeed.feedURL;
-  destFeed.feedURL = document.getElementById("destLinkInput").value;
-  if (destFeed.feedURL == "" || destFeed.feedURL == oldLink){
-  //use cached feed
-    if(cachedDestFeedLink != null) {
-      destFeed = cachedDestFeedLink;
-      //console.log("Reading from cache");
-      loadDest();
-    }
-  }
-  else {
-    getExternalFeed(
-      destFeed.feedURL, 
-      function(result) { 
-        destFeed.json = result; 
-        destFeed.link = destFeed.json.feed.url
-        destFeed.title = destFeed.json.feed.title;
-        cachedDestFeedLink = destFeed;
+  try {
+    let oldLink = destFeed.feedURL;
+    destFeed.feedURL = document.getElementById("destLinkInput").value;
+    if (destFeed.feedURL == "" || destFeed.feedURL == oldLink){
+    //use cached feed
+      if(cachedDestFeedLink != null) {
+        destFeed = cachedDestFeedLink;
+        //console.log("Reading from cache");
         loadDest();
-      },
-      function(result) { 
-        errorDestFeed("Error: a feed could not be derived from '"+destFeed.feedURL+"'")
-    })
+      }
+    }
+    else {
+      getExternalFeed(
+        destFeed.feedURL, 
+        function(result) { 
+          destFeed.json = result; 
+          destFeed.link = destFeed.json.feed.url
+          destFeed.title = destFeed.json.feed.title;
+          cachedDestFeedLink = destFeed;
+          loadDest();
+        },
+        function(result) { 
+          errorDestFeed("Error: a feed could not be derived from '"+destFeed.feedURL+"'")
+      })
+    }
+  } catch(e) {
+    errorDestFeed("Error: "+e.toString());
+    console.error(e);
   }
 }
     
@@ -376,6 +493,9 @@ generateRSS = function() {
   let pubDateTime = new Date(srcItem.pubDate) // note: rss2json doesnt handle time zones?
 
   let [destItemLink,destItemGUID] = addLinkGUID(newItem,srcLink)
+  console.log("L:\n"+destItemLink);
+  console.log("G:\n"+destItemGUID);
+  console.log("NI:\n"+newItem);
   addContentDescription(newItem,srcContent,srcDescription,srcLink,destItemLink,destItemGUID,srcItem.title,dateTime,pubDateTime);
   
   //populate without retrieving from JSON: categories (retrieved earlier), pubDate
@@ -386,7 +506,7 @@ generateRSS = function() {
   newFile.querySelector("channel").appendChild(newItem);
   
   // The newly generated feed is the same as before, except:
-  // Any new namespaces are added (done when the element is added)
+  // TODO Any new namespaces are added (done when the element is added)
   
   // The last build date is updated to the current date/time.
   updateLastBuildDate(newFile.querySelector("channel"),dateTime);
@@ -394,9 +514,13 @@ generateRSS = function() {
   // If the user selected it, the display name and icon are saved as defaults within the feed element using the "rssr:displayName" and "rssr:icon" elements
   addDefaultDisplayNameIcon(newFile.querySelector("channel"));
   
-  // Preview is generated
+  // TODO Preview is generated
+  
+  // TODO make actual downlad button instead of this
+  saveFeed(newFile, destFeed.filename);
 }
 
+// I should really not have functions with 9 arguments...
 addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,destItemLink,destItemGUID,srcTitle,cDateTime,pubDateTime) {
   
   // If both description and content:encoded are present, description is assumed to be a summary. Therefore, only the REBLOG-HEADER step is applied to description, while all steps are applied to content:encoded.
@@ -473,8 +597,8 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,d
   }
 
   // rb button link
-  rblink = `purl.org/rssr/reblog?&feed=${encodeURIComponent(destFeed.feedURL)}&guid=${encodeURIComponent(destFeed.guid)}`;
-  if(destItemLink) rblink += `&feed=${encodeURIComponent(destItemLink)}`;
+  rblink = `purl.org/rssr/reblog?&feed=${encodeURIComponent(destFeed.feedURL)}&guid=${encodeURIComponent(destItemGUID)}`;
+  if(destItemLink) rblink += `&link=${encodeURIComponent(destItemLink)}`;
   if(isCustomDisplayName) rblink += `&name=${encodeURIComponent(destFeed.displayName)}`;
   if(isCustomDisplayIcon) rblink += `&icon=${encodeURIComponent(destFeed.displayIcon)}`;
 
@@ -490,7 +614,7 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,d
     let srcHeaderEnd = res.index;
     res = getTagAttrVal(null, "class", "rssr-reblog-header-divider").exec(srcFull);
     if(res) {
-      opStart = res.index + res[0].length + 1;
+      opStart = res.index + res[0].length;
       replaceReblogHeader = true;
       newFull = srcFull.slice(0,srcHeaderEnd);
     }
@@ -498,26 +622,37 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,d
   //Detection of existing OP header (if needed)
   let addOPHeader = replaceReblogHeader ? false : !(getTagAttrVal(null, "class", "rssr-op-header").test(srcFull));
   //Detection of existing footer
-  let replaceReblogFooter = false;
-  if(getTagAttrVal(null, "class", "rssr-footer").test(srcFull)){
+  let replaceFooter = false;
+  res = getTagAttrVal(null, "class", "rssr-footer").exec(srcFull)
+  if(res){
+    let tag = res[1]; 
+    let searchPos = res.index + res[0].length;
     res = getTagAttrVal(null, "class", "rssr-footer-divider").exec(srcFull);
     if(res) {
-      opEnd = res.index;
-      replaceReblogFooter = true;
-      res = getTagAttrVal(null, "class", "rssr-footer-end").exec(srcFull);
-      opFooterStart = res.index + res[0].length + 1;
+      // find where the div (etc) tag ends
+      let tagEndPos = findTagEnd(srcFull, tag,  searchPos)
+      if(tagEndPos == -1){
+        // tag doesn't end (malformed)
+        // do nothing (don't replace footer, etc.
+      }
+      else{
+        replaceFooter = true;
+        opEnd = res.index; //the original post ends where the footer tag beings 
+        opFooterStart = tagEndPos; //the OP footer starts where the RSSR-provided footer ends
+      }
     }
   }
   //Addendum;
-  let addendumText = document.getElementById("addendumText").value;
+  let addendumText = "\n"+document.getElementById("addendumText").value+"\n";
+  if(document.getElementById("md")) addendumText = converter.makeHtml(addendumText);
   
   // RSSR REBLOG HEADER
   // If there was already a reblog header in the original post, it is REPLACED by the new header (but only from the div to the horizontal rule).
   
 let reblogHeader = (replaceReblogHeader ? "" : `
 <!-- RSS-Reblog Header -->
-<div class="rssr-item">`) + `
-  <div class="rssr-section rssr-reblog-header">
+<div class="rssr-item">
+  `)+`<div class="rssr-section rssr-reblog-header">
     <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
       <a href="${destFeed.link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
         <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
@@ -529,9 +664,9 @@ let reblogHeader = (replaceReblogHeader ? "" : `
       </a><i><time class="rssr-datetime" datetime="${cDateTime.toISOString()}">on ${cDateTime.toLocaleDateString()}:</time></i>
     </small></p>
   </div>
-  <hr class="rssr-hr rssr-reblog-header-divider">
-` + (replaceReblogHeader ? "" : `<!-- End RSS-Reblog Header -->
-`;
+  <hr class="rssr-hr rssr-reblog-header-divider">` + (replaceReblogHeader ? "" : `
+<!-- End RSS-Reblog Header -->
+`);
   
 newFull += reblogHeader;
   
@@ -553,16 +688,16 @@ let opHeader = `
 <!-- End RSS-OP Header -->
 `
 
-if(addOPHeader) newFull += opHeader;
+if(addOPHeader) { newFull += opHeader; }
 
   // ORIGINAL POST 
   // The entire original post is placed here -- except the aforemented REBLOG HEADER and REBLOG FOOTER
-newFull += srcFull.slice(opStart, opEnd - opStart);
+newFull += srcFull.slice(opStart, opEnd);
 
   // ADDENDUM 
   // Only placed if addendum field is not empty
 
-let addendemHeader = `
+let addendumHeader = `
 <!-- RSS-Addendum Header -->
   </div>
   <hr class="rssr-hr rssr-hr-mid">
@@ -578,29 +713,39 @@ let addendemHeader = `
 `
   // Addendum content goes here
 
-if(addendumText) newFull += addendemHeader + addendumText;
+if(addendumText) { newFull += addendumHeader + addendumText; }
 
   // RSS REBLOG FOOTER 
   // If there was already a reblog footer in the original post, it is REPLACED by the new footer (but only from the hr to the br)
 
-let reblogFooter = `
+let reblogFooter = (replaceFooter ? "" : `
 <!-- RSS-Reblog Footer (Reblog Button) -->
   </div>
-  <hr class="rssr-hr rssr-footer-divider">
+  `)+`<hr class="rssr-hr rssr-footer-divider">
   <div class="rssr-section rssr-footer">
     <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;color:blue;"><a href="${rblink}}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://www.rssboard.org/images/rss-icon.png"}" alt=""> <b>Reblog via RSS</b></a></small></p>
     <script async src="${"rssr.purl.org/script"}"></script>
-  </div>
-  <br class="rssr-footer-end">`+(replaceReblogHeader ? "" : `
+  </div>`+(replaceFooter ? "" : `
 </div>
 <!-- End RSS-Reblog Footer -->
-`
-newFull += reblogFooter + srcFull.slice(opFooterStart,srcFull.length - opFooterStart);
+`);
 
+newFull += reblogFooter + srcFull.slice(opFooterStart,srcFull.length);
 
-//then add  as CDATASection
+//add content NS if needed
+if(!newFile.querySelector("rss").getAttributeNS("http://www.w3.org/2000/xmlns/","content")){
+  newFile.querySelector("rss").setAttributeNS("http://www.w3.org/2000/xmlns/","xmlns:content","http://purl.org/rss/1.0/modules/content/");
+}
 
-console.log(newFull);
+//then add as CDATASection
+let contentElement = newFile.createElementNS("http://purl.org/rss/1.0/modules/content/","encoded"); //is this a namespace? I don't even know
+let descElement = newFile.createElement("description");
+
+newItem.appendChild(descElement)
+descElement.appendChild(newFile.createCDATASection(newFull)); //TODO: make it so that the description only has reblog header if conditions are met
+
+newItem.appendChild(contentElement)
+contentElement.appendChild(newFile.createCDATASection(newFull));
 
 }  
 
@@ -695,13 +840,42 @@ addEnclosure = function (newItem, enclosure){
 getTagAttrVal = function(tag, attr, value, flags="") {
   if(!tag) tag = '\\w+';
   if (attr === undefined && value === undefined){
-    return new RegExp(`<\s*(${tag})\s(?:(?:[^">]|"[^"]*")*\s)*>`,flags)
+    return new RegExp(`<\\s*(${tag})(?:\\s+(?:[^">]|"[^"]*")*)*>`,flags)
   }
   if(!attr) attr = '\\w+';
   if(!value) value = '[^"\\s]+';
-  let rxp = new RegExp(`<\\s*(${tag})\\s(?:(?:[^">]|"[^"]*")*\\s)*(${attr})\\s*=\s*"(?:[^"]*\\s)*(${value})(\\s[^"]*)*"[^>]*>`, flags);
+  let rxp = new RegExp(`<\\s*(${tag})\\s(?:(?:[^">]|"[^"]*")*\\s)*(${attr})\\s*=\\s*"(?:[^"]*\\s)*(${value})(\\s[^"]*)*"[^>]*>`, flags);
   return rxp;
 }
 // <\\s*(${tag})\\s([^>]*\\s)*(${attr})\\s*=\\s*"([^"]*\\s)*(${value})(\\s[^"]*)*"[^>]*>
 
-
+// Return pos of end of tag in html, starting after searchPos 
+//i.e. ' <tag>... <tag>... </tag>... </tag>...' returns the position of either the first >, the second >, or -1 if not found
+//      --2222222221111111112222222222---------
+// dont slice html as it will give an incorrectly shifted position
+findTagEnd = function(html, tag, searchPos) {
+  if(tag == "hr" || tag == "br" || tag == "img" || tag == "button") return searchPos;
+  let endTag = '/'+tag;
+  let tagLevel = 1;
+  while(tagLevel > 0){
+      //console.log("tagLevel:",tagLevel);
+      //console.log("searchPos:",searchPos,html.slice(searchPos));
+    let resStartTag = getTagAttrVal(tag).exec(html.slice(searchPos));
+      //console.log("resStartTag:",resStartTag);
+    let resEndTag = getTagAttrVal(endTag).exec(html.slice(searchPos));
+      //console.log("resEndTag:",resEndTag);
+    let startTagPos = resStartTag ? resStartTag.index + html.slice(0,searchPos).length : -1;
+    let endTagPos = resEndTag ? resEndTag.index + html.slice(0,searchPos).length : -1;
+    if(!resEndTag) return -1;
+    if(resStartTag && startTagPos < endTagPos) {
+      searchPos = startTagPos + resStartTag[0].length;
+      tagLevel++;
+    }
+    else {
+      searchPos = endTagPos + resEndTag[0].length;
+      tagLevel--;
+    }
+  }
+  //console.log("Returning tag end @ searchPos:",searchPos,html.slice(searchPos));
+  return searchPos; 
+}

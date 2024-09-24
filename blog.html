@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Blog</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+<style>
+body {
+	background-color:#525c58;
+}
+.title {
+	color:#ffffff;
+    text-shadow: 2px 2px 4px #000000;
+    margin: 24px;
+}
+.rssr-item {
+	background-color: #aed4c4;
+    padding: 24px;
+    margin: 24px;
+    border-radius:12px;
+    border:solid;
+    border-width:1px;
+    border-color:#5a6e65;
+    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+</style>
+
+<!--Stylizing for the RSS Reblog button (only works on some feed readers)-->
+<style>
+.rssr-font {
+  font-family:Helvetica,Arial,sans-serif;
+  font-size:12px;
+  /*vertical-align:middle; /* Moved to inline*/
+}
+.rssr-reblog-button {
+  border-radius:0.36em;
+  background-color:#E17831;
+  color:#ffffff;
+  text-decoration:none;
+  /*padding:0.36em; /* Moved to inline*/
+  /*vertical-align:middle; /* Moved to inline*/
+}
+.rssr-reblog-button:hover {
+  background-color:#ffba8c;
+  color:#ffffff;
+}
+</style>
+
+<!--Stylizing for RSS2HTML-->
+<style>
+.feed-title {
+  display:none;
+}
+.feed-item-title {
+  display:none;
+}
+.feed-item-desc {
+  display:none;
+}
+</style>
+
+</head>
+<body>
+<div class="container">
+<h2 class="title">bluetinge.dev/blog</h2>
+<p><small><i>Under construction</i></small></p>
+
+<script src="//rss.bloople.net/?url=https%3A%2F%2Fwww.bluetinge.dev%2Frss.xml&showtitle=false&type=js"></script>
+</div>
+</body>
+</html>

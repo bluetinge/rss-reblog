@@ -120,11 +120,12 @@
   </style>
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/showdown@2.1.0/dist/showdown.min.js" integrity="sha384-GP2+CwBlakZSDJUr+E4JvbxpM75i1i8+RKkieQxzuyDZLG+5105E1OfHIjzcXyWH" crossorigin="anonymous"></script>
   <script src="js-xss/xss.js"></script>
   <script src="rss-reblog.js"></script>
   <script src="rss-reblog-xss-whitelist.js"></script>
   <script>
-    window.onload = initRSSReblog;
+    window.onload = initRSSReblogWrapper;
   </script>
 
 
@@ -213,7 +214,7 @@
         <input type="radio" name="securityOptions" id="keepStyles" value="keepStyles"> <label for="keepStyles">Remove all scripting, but keep all styling</label>
         <br>
 <!-- ( ) Keep all CSS and JavaScript (Warning – security risks! Enable at your own risk) -->
-        <input type="radio" name="securityOptions" id="keepScripts" value="keepScripts"> <label for="keepScripts">Keep all scripting and styling (Warning - security risks! Enable at your own peril)</label>
+        <input type="radio" name="securityOptions" id="keepAll" value="keepAll"> <label for="keepScripts">Keep all scripting and styling (Warning - security risks! Enable at your own peril)</label>
         <br>
       </small></div>
     </div>
