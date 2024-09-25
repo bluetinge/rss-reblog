@@ -57,7 +57,7 @@
           <p style="vertical-align:middle;margin-bottom:0px;">Display as:
             <small style="padding:0.36em;"><span class="rssr-font rssr-reblog-header" >
               <a style="text-decoration:none;">
-                  <img class="dest-feed-icon" src="default-profile.png" id='destFeedIcon' alt=' ' onclick="editPFP()">
+                  <img class="dest-feed-icon" src="default-profile.png" id='destFeedIcon' alt=' ' onclick="editPFP()" onload="console.log(this.width+'x'+this.height);">
                 <span onclick="openDisplayNameEditor()">
                   <b><span id="destFeedTitle"></span><input type="text" id="destFeedTitleBox" style="display:none;" onfocusout="closeDisplayNameEditor();"></b>
                   <span id="editHelper">(<u>edit</u>)</span>

@@ -91,7 +91,7 @@ function serialize(toSerialize) {
             throwOnFailure: false,
 
         });
-        console.log(`after format: ${xmlString}`);
+        //console.log(`after format: ${xmlString}`);
         return xmlString;
     }
     catch {
@@ -143,7 +143,7 @@ initRSSReblogMain = function(pageURL) {
   cachedDestFeedLink = null
   
   // using same converter as RuSShdown for consistency
-  const converter = new showdown.Converter()
+  converter = new showdown.Converter()
   
   //1. Autofill the source feed and source guid.
   
@@ -645,6 +645,10 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,d
     let isCustomDisplayIcon = true;
     destFeed.displayIcon = destFeed.customDisplayIcon;
   }
+  let destH = document.getElementById("destFeedIcon").height;
+  destH = ((destH > 0) && (destH <= 24) ? destH : 16)+"px";
+  let srcH = document.getElementById("srcFeedIcon").height;
+  srcH = ((srcH > 0) && (srcH <= 24) ? srcH : 16)+"px";
   
   // post links
   let postElement = "post";
@@ -666,19 +670,19 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,d
 
   //Preparing for repost
   let newFull = "";
-  // Slice srcFull into (srcHeader) -> [RSSR Reblog Header] -> (Original Post) -> [RSSR Footer] -> (srcFooter)
-  // newFull = srcFull.slice(0, srcHeaderEnd) + New headers + srcFull.slice(opStart, opEnd) + Footer + FooterStart -> FooterEnd(srcFull.length)
+  // Slice srcFull into (srcWeader) -> [RSSR Reblog Header] -> (Original Post) -> [RSSR Footer] -> (srcFooter)
+  // newFull = srcFull.slice(0, srcWeaderEnd) + New headers + srcFull.slice(opStart, opEnd) + Footer + FooterStart -> FooterEnd(srcFull.length)
   let opStart = 0, opEnd = srcFull.length, opFooterStart = srcFull.length;
   //Detection of existing reblog header:
   let replaceReblogHeader = false;
   let res = getTagAttrVal(null, "class", "rssr-reblog-header").exec(srcFull);
   if(res){
-    let srcHeaderEnd = res.index;
+    let srcWeaderEnd = res.index;
     res = getTagAttrVal(null, "class", "rssr-reblog-header-divider").exec(srcFull);
     if(res) {
       opStart = res.index + res[0].length;
       replaceReblogHeader = true;
-      newFull = srcFull.slice(0,srcHeaderEnd);
+      newFull = srcFull.slice(0,srcWeaderEnd);
     }
   }
   //Detection of existing OP header (if needed)
@@ -717,11 +721,11 @@ let reblogHeader = (replaceReblogHeader ? "" : `
   `)+`<div class="rssr-section rssr-reblog-header">
     <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
       <a href="${destFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
-        <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
+        <img style="max-height:24px;height:${destH};"vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
         <b>${destFeed.displayName}</b>
       </a> <i> reblogged a ${postElement} from&nbsp; </i> 
       <a href="${srcFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
-        <img style="max-height:2em;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
+        <img style="max-height:24px;height:${srcH};vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
         <b>${srcFeed.displayName}</b>
       </a><i><time class="rssr-datetime" datetime="${cDateTime.toISOString()}">on ${cDateTime.toLocaleDateString()}:</time></i>
     </small></p>
@@ -742,7 +746,7 @@ let opHeader = `
     <div class="rssr-section-header rssr-op-header">
       <p><small class="rssr-font rssr-op-header-font" style="vertical-align:middle;padding:0.36em;">
         <a href="${srcFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-          <img style="max-height:24px;vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
+          <img style="max-height:24px;height:${srcH};vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
           <b>${srcFeed.displayName}</b>
         </a><i>${postedElement}<time class="rssr-datetime" datetime="${pubDateTime.toISOString()}"> on ${pubDateTime.toLocaleDateString()}</time>:</i>
       </small></p>
@@ -767,7 +771,7 @@ let addendumHeader = `
     <div class="rssr-section-header rssr-addendum-header">
       <p><small class="rssr-font rssr-addendum-header-font" style="vertical-align:middle;padding:0.36em;">
         <a href="${destFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-        <img style="max-height:24px;vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
+        <img style="max-height:24px;height:${destH};"vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
         <b>${destFeed.displayName}</b></a> ${addedElement}<time class="rssr-datetime" datetime="${cDateTime.toISOString()}"> on ${cDateTime.toLocaleDateString()}</time>:</i>
       </small></p>
     </div>
@@ -785,7 +789,7 @@ let reblogFooter = (replaceFooter ? "" : `
   </div>
   `)+`<hr class="rssr-hr rssr-footer-divider">
   <div class="rssr-section rssr-footer">
-    <p style=""><small class="rssr-font rssr-footer-font" style="vertical-align:middle;color:blue;"><a href="${rblink}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://purl.org/rssr/rss-icon"}" alt=""> <b>Reblog via RSS</b></a></small></p>
+    <p><small class="rssr-font rssr-footer-font" style="vertical-align:middle;color:blue;"><a href="${rblink}" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="${"https://purl.org/rssr/rss-icon"}" alt=""> <b>Reblog via RSS</b></a></small></p>
     <script async src="${"https://purl.org/rssr/script"}"></script>
   </div>`+(replaceFooter ? "" : `
 </div>
