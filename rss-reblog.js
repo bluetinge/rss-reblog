@@ -37,6 +37,25 @@ scrubLink = function (unsafeLink) {
   return safeLink;
 }
 
+// parse the URL by parameter
+parsePageURL = function(pageURL, srcFeed){
+  let searchParams = new URLSearchParams(pageURL);
+  srcFeed.feedURL = scrubLink(searchParams.get("feed"));
+  srcFeed.guid = searchParams.get("guid");
+  // OPTIONAL PARAM:
+  srcFeed.postLink = searchParams.get("link");  // can be used instead of guid, I GUESS. If the owner of the feed is SLOPPY :/
+  //ideally these are embedded in the RSS feed but cross-origin policy does make this difficult 
+  srcFeed.displayIcon = searchParams.get("icon");
+  srcFeed.displayName = searchParams.get("name");
+  
+  //Error check (should have url set and at least one of guid or postLink)
+  let err = false, errText = `I wasn't able to parse the URL <${pageURL}>:\n`;
+  if(!srcFeed.feedURL) { errText += ` - I couldn't find a "feed" parameter in the URL. This should be a link to an RSS feed.\n`; err = true;}
+  if(!srcFeed.guid && !srcFeed.postLink) { errText += ` - I couldn't find a "guid" or "link" parameter in the URL; at least one is required in order to load the correct post. This parameter must match exactly one item within the feed.\n`; err = true; }
+  errText += "\n Parameters begin after ? and are delimited with & (i.e., www.example.com/page?&param1=value1&param2=value2)\n"
+  if (err) throw new Error(errText);
+}
+
 // "borrowed" from https://github.com/ChaiaEran/RuSShdown/blob/main/russhdown.js
 // ty for the STRONGEST LICENSE, and consider cirno APPRECIATED :)
 async function readRssFile(f) {
@@ -55,18 +74,6 @@ async function readRssFile(f) {
     let rssDoc = parser.parseFromString(inputFileContents, "text/xml");
 
     return rssDoc;
-}
-// also borrowed 
-const converter = new showdown.Converter()
-
-initRSSReblogWrapper = function() {
-  try {
-    initRSSReblogMain();
-  }
-  catch(e) {
-    errorTop.innerText = e.toString();
-    console.error(e);
-  }
 }
 
 // and also these 
@@ -103,8 +110,18 @@ function saveFeed(toSave, filename) {
 }
 // okay the rest is my code tho
 
+initRSSReblogWrapper = function() {
+  try {
+    initRSSReblogMain(window.location.href);
+  }
+  catch(e) {
+    errorTop.innerText = e.toString();
+    console.error(e);
+  }
+}
 
-initRSSReblogMain = function() {
+
+initRSSReblogMain = function(pageURL) {
   
   srcFeed = {
     feedURL:null,     // Provided via URLSearchParams -- this is the literal link to an rss.xml
@@ -125,28 +142,14 @@ initRSSReblogMain = function() {
     };
   cachedDestFeedLink = null
   
+  // using same converter as RuSShdown for consistency
+  const converter = new showdown.Converter()
   
   //1. Autofill the source feed and source guid.
   
   //let pageURL = "rssr.dev/reblog?&feed=https%3A%2F%2Fwww.bluetinge.dev%2Frss.xml&guid=https%3A%2F%2Fbluetinge.github.io%2Fregex-crossword%2F8"; //sample
-  let pageURL = window.location.href; //uncomment to use actual URL
-  
-  searchParams = new URLSearchParams(pageURL);
-  srcFeed.feedURL = scrubLink(searchParams.get("feed"));
-  srcFeed.guid = searchParams.get("guid");
-  // OPTIONAL PARAM:
-  srcFeed.postLink = searchParams.get("link");  // can be used instead of guid, I GUESS. If the owner of the feed is SLOPPY :/
-  //ideally these are embedded in the RSS feed but cross-origin policy does make this difficult 
-  srcFeed.displayIcon = searchParams.get("icon");
-  srcFeed.displayName = searchParams.get("name");
-  
-  //Error check (should have url set and at least one of guid or postLink)
-  let err = false, errText = `I wasn't able to parse the URL <${pageURL}>:\n`;
-  if(!srcFeed.feedURL) { errText += ` - I couldn't find a "feed" parameter in the URL. This should be a link to an RSS feed.\n`; err = true;}
-  if(!srcFeed.guid && !srcFeed.postLink) { errText += ` - I couldn't find a "guid" or "link" parameter in the URL; at least one is required in order to load the correct post. This parameter must match exactly one item within the feed.\n`; err = true; }
-  errText += "\n Parameters begin after ? and are delimited with & (i.e., www.example.com/page?&param1=value1&param2=value2)\n"
-  
-  if (err) throw new Error(errText);
+  //let pageURL = window.location.href; //uncomment to use actual URL
+  parsePageURL(pageURL, srcFeed);
 
   //  1.2 Attempt to load the source feed
   getExternalFeed(
@@ -156,7 +159,8 @@ initRSSReblogMain = function() {
       console.log(result);
       // RSS2JSON-specific
       srcFeed.json = result;
-      loadSrc();
+      loadSrc(srcFeed);
+      displaySrc();
       } catch(e) {
          errorTop.innerText = e.toString();
         console.error(e);
@@ -169,6 +173,8 @@ initRSSReblogMain = function() {
     }
   )
 }
+
+
 
   //2. From the source feed, determine if the guid can be found. Load the source pfp and name, and the source item tags.
 
@@ -206,7 +212,7 @@ loadByLink = function(postLink,items) {
   return retItem;
 }
 
-loadSrc = function() {
+loadSrc = function(srcFeed) {
   
   // Loads by GUID if present, or link if not
   // Attempt to fix errors by:
@@ -220,7 +226,7 @@ loadSrc = function() {
   srcFeed.title = srcFeed.json.feed.title;
   
   srcItem = null;
-  let errText = "I had trouble loading the feed. These are the problems I found:\n";
+  let errText = "I had trouble finding the item in the feed.\nSometimes, this will happen if the item was only added to the feed very recently.\n\nI tried to find it in a few different ways. These are the problems I ran into:\n";
   
   // try given elements 
   if (!srcItem && srcFeed.guid) try { srcItem = loadByGUID(srcFeed.guid, srcFeed.json.items); }
@@ -256,10 +262,15 @@ loadSrc = function() {
     if (!srcItem) try { srcItem = loadByLink("https://"+srcFeed.postLink.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
   }
   
+  // try swapping given elements 
+  if (!srcItem && srcFeed.postLink) try { srcItem = loadByGUID(srcFeed.postLink, srcFeed.json.items); }
+  catch (e) { errText += " - "+e.message+"\n"; }
+  if (!srcItem && srcFeed.guid) try { srcItem = loadByLink(srcFeed.guid, srcFeed.json.items); }
+  catch (e) { errText += " - "+e.message+"\n"; }
+  
   // could do additional error checking but that's enough for now, methinks
   if(!srcItem) {
-      errorTop.innerText = errText;
-      return;
+      throw new Error(errText);
   }
 
   // feedWebsite is sometimes a link to a website, blog, etc. instead of a feed
@@ -271,14 +282,29 @@ loadSrc = function() {
   srcFeed.feedWebsite = scrubLink(srcFeed.feedWebsite);
   srcFeed.displayIcon = scrubLink(srcFeed.displayIcon);
   srcItem.link = scrubLink(srcItem.link);
+  // we don't use display the image but it should probably still be scrubbed 
+  srcItem.thumbnail = scrubLink(srcItem.thumbnail);
+  
+  // using filterXSS to scrub non-links
+  srcFeed.title = filterXSS(srcFeed.title);
+  srcItem.author = filterXSS(srcItem.author)
+  for (i in srcItem.categories) srcItem.categories[i] = filterXSS(srcItem.categories[i]);
+  srcItem.author = filterXSS(srcItem.author)
+  for (key in srcItem.enclosure) srcItem.enclosure[key] = filterXSS(srcItem.enclosure[key]);
+  srcItem.guid = filterXSS(srcItem.guid); //potentially a bad idea?
+  srcItem.pubDate = filterXSS(srcItem.pubDate);
+  srcItem.title = filterXSS(srcItem.title);
+
+  //note: content/description are filtered later based on user selections
   
   //If no display name was provided, the feed title is used
   if(!srcFeed.displayName) srcFeed.displayName = srcFeed.title;
   // if no display icon is provided, favicon is used
-  if(!srcFeed.displayIcon) srcFeed.displayIcon = getFavicon(srcFeed.feedURL);
-
+  if(!srcFeed.displayIcon) srcFeed.displayIcon = getFavicon(srcFeed.feedURL); 
+}
   //feed loaded correctly
-  // now to fill vars on page
+  // now to fill vars on page 
+displaySrc = function() {
   document.getElementById("srcItemTitle").innerText = srcItem.title;
   document.getElementById('srcFeedIcon').src = srcFeed.displayIcon;
   for (srcNameElement of document.getElementsByClassName("srcFeedDisplayName")){
@@ -293,9 +319,10 @@ loadSrc = function() {
   
   //display to user
   errorTop.style.display = 'none';
-  document.getElementById('all').style.visibility = 'visible';
-  
+  document.getElementById('all').style.visibility = 'visible';  
 }
+
+
 
   //3. Prompt the user for their feed (link or file)
 
@@ -473,10 +500,11 @@ editPFP = function() {
     document.getElementById('destFeedIcon').alt = "";
   }
   else {
+    if (!PFPLink.includes('://')) PFPLink = "https://" + PFPLink;
     destFeed.customDisplayIcon = PFPLink;
   }
   document.getElementById('destFeedIcon').alt = " ";
-  document.getElementById('destFeedIcon').src = PFPLink;
+  document.getElementById('destFeedIcon').src = destFeed.customDisplayIcon;
   document.getElementById('saveDefaultNameIcon').style.display = 'inline';
 }
 
@@ -785,7 +813,7 @@ let reblogFooter = (replaceFooter ? "" : `
 }
 
   // If a link was provided by the current user, the link is updated. Otherwise, it stays the same (*XSS vector? Javascript:, etc should be disallowed)
-    // The patterns $GUID$ and $POST_NUM$ are replaced, respectively. (Escape by encoding the $ as %24
+    // The patterns $GUID$ and $POST_NUM$ are replaced, respectively. (Escape by encoding the $ as %24)
   // If any of the following are true, the GUID is auto-generated:
     //A) The link was not provided
     //B) The link is non-unique.
@@ -794,6 +822,7 @@ let reblogFooter = (replaceFooter ? "" : `
 addLinkGUID = function (newItem, srcLink) {
   
   let url = document.getElementById("postLink").value;
+  if(url) url = url.trim();
   if (url == "") url = srcLink;
   let guid = url;
   let isPermaLink = true;
@@ -814,7 +843,7 @@ addLinkGUID = function (newItem, srcLink) {
   // add link element
   if (url != "") {
     url = url.replace(/\$GUID\$/g, guid);
-    url = url.replace(/\$POSTNUM\$/g, newFile.querySelectorAll('item').length);
+    url = url.replace(/\$POSTNUM\$/g, destFeed.file.querySelectorAll('item').length + 1);
     newItem.appendChild(newFile.createElement("link")).innerHTML = url; //TODO! chk if encoded
   }
   return [url,guid];

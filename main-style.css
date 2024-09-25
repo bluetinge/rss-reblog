@@ -1,0 +1,89 @@
+  body {
+    background-color:#525c58;
+  }
+  
+  code {
+    
+  }
+  
+  label {
+    margin:2px;
+  }
+  
+  
+  .title {
+    color:#ffffff;
+      text-shadow: 2px 2px 4px #000000;
+      margin: 24px;
+  }
+  
+  .card {
+    background-color: #aed4c4;
+      padding: 24px;
+      margin: 24px;
+      border-radius:12px;
+      border:solid;
+      border-width:1px;
+      border-color:#5a6e65;
+      box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  }
+
+  .section {
+    padding: 10px;
+  }
+  
+  .get-dest-feed {
+    padding-bottom: 0px;
+  }
+  
+  .dest-feed-icon {
+    max-height: 24px;
+    vertical-align: middle;
+    border: 1px solid transparent;
+  }
+  .dest-feed-icon:hover {
+    border: 1px solid blue;
+
+  }
+  
+  .security-box p {
+    margin-bottom: 6px;
+  }
+  
+  .radio-options {
+    padding-left: 6px;
+  } 
+
+  .radio-options label {
+    margin: 0px;
+  }
+  
+  input {
+    margin: 0px !important;
+    vertical-align: middle;
+  }
+  
+  
+  .add-guid p {
+    padding-left: 6px;
+  }
+  
+  .btn-generate {
+    background-color: #178054;
+    border-color: #167d52;
+  }
+  .btn-generate:hover {
+    background-color: #1a915f !important;
+  }
+  .btn-generate:focus {
+    border-color: #167d52;
+    background-color: #1a8a5b
+  }
+  .btn-generate:active { 
+    background-color: #1d9663 !important; 
+  }
+  .btn-generate:disabled { 
+    background-color: #000000 !important; 
+    border-color: #000000 !important;
+    color: #bfbfbf !important;
+  }

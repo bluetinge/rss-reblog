@@ -2,9 +2,11 @@
 <html>
 <head>
 <title>RSS Reblogger</title>
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
   <!-- Generic styling -->
+  <link rel="stylesheet" href="main-style.css" />
+  <!--Stylizing for the RSS Reblog button (only works on some feed readers)-->
+  <link rel="stylesheet" href="rss-button.css" />
   <style>
   .centerbox {
     display: flex;
@@ -18,158 +20,27 @@
     margin-left: 20px;
     margin-right: 20px;
   }
-  
-  body {
-    background-color:#525c58;
-  }
-  
-  code {
-    
-  }
-  
-  label {
-    margin:2px;
-  }
-  
-  
-  .title {
-    color:#ffffff;
-      text-shadow: 2px 2px 4px #000000;
-      margin: 24px;
-  }
-  
-  .card {
-    background-color: #aed4c4;
-      padding: 24px;
-      margin: 24px;
-      border-radius:12px;
-      border:solid;
-      border-width:1px;
-      border-color:#5a6e65;
-      box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-  }
-
-  .section {
-    padding: 10px;
-  }
-  
-  .get-dest-feed {
-    padding-bottom: 0px;
-  }
-  
-  .dest-feed-icon {
-    max-height: 24px;
-    vertical-align: middle;
-    border: 1px solid transparent;
-  }
-  .dest-feed-icon:hover {
-    border: 1px solid blue;
-
-  }
-  
-  .security-box p {
-    margin-bottom: 6px;
-  }
-  
-  .radio-options {
-    padding-left: 6px;
-  } 
-
-  .radio-options label {
-    margin: 0px;
-  }
-  
-  input {
-    margin: 0px !important;
-    vertical-align: middle;
-  }
-  
-  
-  .add-guid p {
-    padding-left: 6px;
-  }
-  
-  .btn-generate {
-    background-color: #178054;
-    border-color: #167d52;
-  }
-  .btn-generate:hover {
-    background-color: #1a915f !important;
-  }
-  .btn-generate:focus {
-    border-color: #167d52;
-    background-color: #1a8a5b
-  }
-  .btn-generate:active { 
-    background-color: #1d9663 !important; 
-  }
-  .btn-generate:disabled { 
-    background-color: #000000 !important; 
-    border-color: #000000 !important;
-    color: #bfbfbf !important;
-  }
   </style>
-  
-  <!--Stylizing for the RSS Reblog button (only works on some feed readers)-->
-  <style>
-  .rssr-font {
-    font-family:Helvetica,Arial,sans-serif;
-    font-size:12px;
-    /*vertical-align:middle; /* Moved to inline*/
-  }
-  .rssr-reblog-button {
-    border-radius:0.36em;
-    background-color:#E17831;
-    color:#ffffff;
-    text-decoration:none;
-    /*padding:0.36em; /* Moved to inline*/
-    /*vertical-align:middle; /* Moved to inline*/
-  }
-  .rssr-reblog-button:hover {
-    background-color:#ffba8c;
-    color:#ffffff;
-  }
-  </style>
-
-
-<!--Stylizing for the RSS Reblog button (only works on some feed readers)-->
-<style>
-.rssr-font {
-  font-family:Helvetica,Arial,sans-serif;
-  font-size:12px;
-  /*vertical-align:middle; /* Moved to inline*/
-}
-.rssr-reblog-button {
-  border-radius:0.36em;
-  background-color:#E17831;
-  color:#ffffff;
-  text-decoration:none;
-  /*padding:0.36em; /* Moved to inline*/
-  /*vertical-align:middle; /* Moved to inline*/
-}
-.rssr-reblog-button:hover {
-  background-color:#ffba8c;
-  color:#ffffff;
-}
-</style>
-
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="js-xss/xss.js"></script>
+<script src="rss-reblog.js"></script>
 <script>
-
-
   makeReblogURL = function() {
     let feedLink = document.getElementById("srcFeedLinkInput").value.trim();
-    if (!feedLink.includes('://')) feedLink = "https://" + feedLink;
+    if (feedLink && !feedLink.includes('://')) feedLink = "https://" + feedLink;
     let postLink = document.getElementById("srcPostLinkInput").value.trim();
     let guid = document.getElementById("srcPostGUIDInput").value;
+    let displayName = document.getElementById("displayNameInput").value.trim();
+    let displayIcon = document.getElementById("displayIconInput").value.trim();
+    if (displayIcon && !displayIcon.includes('://')) displayIcon = "https://" + displayIcon;
     
-    let feedComp = ""; linkComp = ""; guidComp = "";
+    let feedComp = ""; linkComp = ""; guidComp = ""; nameComp = ""; iconComp = "";
     if(feedLink)  feedComp = "&feed="+encodeURIComponent(feedLink);
     if(postLink)  linkComp = "&link="+encodeURIComponent(postLink);
     if(guid)  guidComp = "&guid="+encodeURIComponent(guid);
-    let reblogURL = 'https://rssr.bluetinge.dev/rss-reblog.html?' + feedComp + linkComp + guidComp;
-    
-        
-    console.log(reblogURL, feedComp,linkComp,guidComp, ((feedComp && (guidComp || linkComp))) );
+    if(displayName) nameComp = "&name="+encodeURIComponent(displayName);
+    if(displayIcon) iconComp = "&icon="+encodeURIComponent(displayIcon);
+    let reblogURL = 'https://rssr.bluetinge.dev/rss-reblog.html?' + feedComp + linkComp + guidComp + nameComp + iconComp;
     
     if(feedComp && (guidComp || linkComp)) {
       return reblogURL;
@@ -177,31 +48,76 @@
     else return null;
   }
   
+  displayError = function(e) {
+      document.getElementById("results").innerHTML = '<pre style="color:red">'+e.message+'</pre>';
+      document.getElementById("results2").innerHTML = ""
+      document.getElementById("results2label").innerHTML = ""
+      console.error(e);
+  }
+  
+  testReblogURL = function(reblogURL, successFunc) {
+    srcFeed = {};
+    try {
+      parsePageURL(reblogURL, srcFeed);
+      getExternalFeed(
+        srcFeed.feedURL, 
+        function(result) { 
+          try{
+          console.log(result);
+          // RSS2JSON-specific
+          srcFeed.json = result;
+          loadSrc(srcFeed);
+          successFunc(srcFeed);
+          } catch(e) {
+            displayError(e);
+          }
+        },
+        function(result) { 
+          console.error(result);
+          displayError(new Error("I tried to load the feed <" + srcFeed.feedURL + ">, but I ran into an error.\nRemember, this needs to be a feed to an RSS file on the Internet.\n\nCheck the developer console for more details."));
+        }
+      )
+    }
+    catch(e) {
+      displayError(e);
+    }
+  }
+  
   followReblogURL = function() {
     let reblogURL = makeReblogURL();
-    if (reblogURL) {
-      window.location.href = reblogURL;
-      document.getElementById("results").innerHTML = "<p>Loading...</p>";
-    }
+    testReblogURL(reblogURL, function(){
+      if (reblogURL) {
+        window.location.href = reblogURL;
+        document.getElementById("results").innerHTML = "<p>Loading...</p>";
+      } 
+    });
+
     
   }
   
   displayReblogURL = function() {
     let reblogURL = makeReblogURL();
-    if (reblogURL) {
-      document.getElementById("results").innerHTML = "<p>Generated link: <code><a href="+reblogURL+">"+reblogURL+"</a></code></p>";
-      
-      let buttonCode = '<!-- RSS Reblog Button -->\n\
-  <hr class="rssr-hr rssr-footer-divider">\n\
-  <div class="rssr-section rssr-footer">\n\
-    <p><small class="rssr-font rssr-footer-font" style="vertical-align:middle;text-color:blue;"><a href="' + reblogURL + '" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="https://purl.org/rssr/rss-icon" alt=""> <b>Reblog via RSS</b></a></small></p>\n\
-    <script async src="https://purl.org/rssr/script" charset="utf-8"></sc'+'ript>\n\
-  </div>\n\
-<!-- End RSS Reblog Button -->';
+    testReblogURL(reblogURL, function(srcFeed) {
+        document.getElementById("results").innerHTML = "<p>Generated link: <code><a href="+reblogURL+">"+reblogURL+"</a></code></p>";
+        
+        let buttonCode = '<!-- RSS Reblog Button -->\n\
+    <hr class="rssr-hr rssr-footer-divider">\n\
+    <div class="rssr-section rssr-footer">\n\
+      <p><small class="rssr-font rssr-footer-font" style="vertical-align:middle;text-color:blue;"><a href="' + reblogURL + '" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="https://purl.org/rssr/rss-icon" alt=""> <b>Reblog via RSS</b></a></small></p>\n\
+      <script async src="https://purl.org/rssr/script" charset="utf-8"></sc'+'ript>\n\
+    </div>\n\
+  <!-- End RSS Reblog Button -->';
 
-      document.getElementById("results2label").innerHTML = '<p style="margin-bottom:0px;padding-bottom:0px;">You can use the code below to embed a reblog link in your website:</p>';
-      document.getElementById("results2").innerHTML = '<textarea style="width:100%; margin:20px; margin-top:10px; font-family: monospace" rows="10">'+buttonCode+'</textarea>';
-    }
+        document.getElementById("results2label").innerHTML = '<p style="margin-bottom:0px;padding-bottom:0px;">You can use the code below to embed a reblog link in your website:</p>';
+        document.getElementById("results2").innerHTML = '<textarea style="width:100%; margin:20px; margin-top:10px; font-family: monospace" rows="10">'+buttonCode+'</textarea>';
+        
+        
+        document.getElementById("srcFeedDisplayName").innerText = srcFeed.displayName;
+        document.getElementById('srcFeedIcon').src = srcFeed.displayIcon;
+        document.getElementById("profileInfoBox").style.display = "block";
+        
+    });
+
   }
 
   checkValid = function() {
@@ -214,7 +130,6 @@
       document.getElementById("reblogPageButton").disabled = true;
       document.getElementById("makeLinkButton").disabled = true;
     }
-
   }
   
 </script>
@@ -242,6 +157,20 @@
     <div class="centerbox" id="results"></div>
     <div class="centerbox" id="results2label"></div>
     <div class="centerbox" id="results2"></div>
+  
+  <!-- Your profile will be displayed as: [I] [ Text box ] -->
+    <div id="profileInfoBox" style="display:none;">
+      <p style="vertical-align:middle;margin-bottom:0px;">Your profile will be displayed as:
+        <small style="padding:0.36em;"><span class="rssr-font rssr-reblog-header" >
+          <a style="text-decoration:none"> 
+            <img style="max-height:2em;vertical-align:middle;" src="default-profile.png" alt="(Image not found)" id="srcFeedIcon">
+            <b id="srcFeedDisplayName">Name</b>
+          </a>
+        </span></small>, but you can customize it below:
+      </p>
+      <p> <label for="displayNameInput">  Name: </label> <input type="text" id="displayNameInput" name="displayNameInput" placeholder="Display Name"> </p>
+      <p> <label for="displayIconInput">  Icon: &nbsp; </label> <input type="text" id="displayIconInput" name="displayIconInput" placeholder="https://your-site.com/favicon.ico"> </p>
+    </div>
   
   </div>
   
