@@ -645,8 +645,12 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,d
     let isCustomDisplayIcon = true;
     destFeed.displayIcon = destFeed.customDisplayIcon;
   }
+  let destW = document.getElementById("destFeedIcon").width;
+  destW = ((destW > 0) && (destW <= 24) ? destW : 16)+"px";
   let destH = document.getElementById("destFeedIcon").height;
   destH = ((destH > 0) && (destH <= 24) ? destH : 16)+"px";
+  let srcW = document.getElementById("srcFeedIcon").width;
+  srcW = ((srcW > 0) && (srcW <= 24) ? srcW : 16)+"px";
   let srcH = document.getElementById("srcFeedIcon").height;
   srcH = ((srcH > 0) && (srcH <= 24) ? srcH : 16)+"px";
   
@@ -721,11 +725,11 @@ let reblogHeader = (replaceReblogHeader ? "" : `
   `)+`<div class="rssr-section rssr-reblog-header">
     <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
       <a href="${destFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
-        <img style="max-height:24px;height:${destH};"vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
+        <img style="max-height:24px;max-width:24px;height:${destH};width:${destW};"vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
         <b>${destFeed.displayName}</b>
       </a> <i> reblogged a ${postElement} from&nbsp; </i> 
       <a href="${srcFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
-        <img style="max-height:24px;height:${srcH};vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
+        <img style="max-height:24px;max-width:24px;height:${srcH};width:${srcW};vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
         <b>${srcFeed.displayName}</b>
       </a><i><time class="rssr-datetime" datetime="${cDateTime.toISOString()}">on ${cDateTime.toLocaleDateString()}:</time></i>
     </small></p>
@@ -746,7 +750,7 @@ let opHeader = `
     <div class="rssr-section-header rssr-op-header">
       <p><small class="rssr-font rssr-op-header-font" style="vertical-align:middle;padding:0.36em;">
         <a href="${srcFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-          <img style="max-height:24px;height:${srcH};vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
+          <img style="max-height:24px;max-width:24px;height:${srcH};width:${srcW};vertical-align:middle;" src="${srcFeed.displayIcon}" alt="">
           <b>${srcFeed.displayName}</b>
         </a><i>${postedElement}<time class="rssr-datetime" datetime="${pubDateTime.toISOString()}"> on ${pubDateTime.toLocaleDateString()}</time>:</i>
       </small></p>
@@ -771,7 +775,7 @@ let addendumHeader = `
     <div class="rssr-section-header rssr-addendum-header">
       <p><small class="rssr-font rssr-addendum-header-font" style="vertical-align:middle;padding:0.36em;">
         <a href="${destFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-        <img style="max-height:24px;height:${destH};"vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
+        <img style="max-height:24px;max-width:24px;height:${destH};width:${destW};"vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
         <b>${destFeed.displayName}</b></a> ${addedElement}<time class="rssr-datetime" datetime="${cDateTime.toISOString()}"> on ${cDateTime.toLocaleDateString()}</time>:</i>
       </small></p>
     </div>

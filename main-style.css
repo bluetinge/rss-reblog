@@ -1,3 +1,4 @@
+
   body {
     background-color:#525c58;
   }
@@ -38,6 +39,7 @@
   
   .dest-feed-icon {
     max-height: 24px;
+    max-width: 24px;
     vertical-align: middle;
     border: 1px solid transparent;
   }
