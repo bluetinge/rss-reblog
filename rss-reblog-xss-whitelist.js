@@ -69,7 +69,7 @@ rssReblogXSSOptions = {
     "header":["class","style"],
     "hr":["class","style"],
     "i":["class","style"],
-    "img":["class","style","src","alt","title","width","height","loading"],
+    "img":["class","style","src","alt","title","width","height","loading", "max-width", "max-height"],
     "ins":["class","style","datetime"],
     "kbd":["class","style"],
       "label":["class","style"],
