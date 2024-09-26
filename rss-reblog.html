@@ -125,16 +125,57 @@
     <button type="button" class="btn btn-info btn-generate" id="generateButton" onclick="generateRSS()" disabled> <span class="glyphicon glyphicon-share"></span> Generate </button>
   </div>
   
-<!-- Tabs: View preview | View as markdown | View as HTML | View as RSS -->
-<!-- [ Preview pane ] -->
+</div>
+<div class="card" id="resultsCard" style="visibility:hidden;"> 
   
-<!-- Note: external scripting disabled in preview pane for security reasons. -->
+  <div class="section results" id="results">
+    
+<!-- Tabs: View preview | View as markdown | View as HTML | View as RSS -->
+    
+    <div class="tab">
+      <button class="tablinks" id="previewButton" onclick="openTab(event, 'previewPane')">View preview</button>
+      <button class="tablinks" onclick="openTab(event, 'markdownPane')">View as markdown</button>
+      <button class="tablinks" onclick="openTab(event, 'htmlPane')">View as HTML</button>
+      <button class="tablinks" onclick="openTab(event, 'rssItemPane')">View RSS item</button>
+      <button class="tablinks" onclick="openTab(event, 'rssFilePane')">View entire RSS file</button>
+    </div>
+
+<!-- [ Preview pane ] -->
+
+    <div id="previewPane" class="tabcontent">
+      <iframe class="pane" id="previewFrame" sandbox="allow-scripts allow-popups"></iframe>
+    </div>
+
+    <div id="markdownPane" class="tabcontent">
+      <textarea class="pane" id="mdTextArea" cols="40" rows="10" ></textarea>
+    </div>
+
+    <div id="htmlPane" class="tabcontent">
+      <textarea class="pane" id="htmlTextArea" cols="40" rows="10"></textarea>
+    </div>
+    
+    <div id="rssItemPane" class="tabcontent">
+      <textarea class="pane" id="rssItemTextArea" cols="40" rows="10"></textarea>
+    </div>
+
+    <div id="rssFilePane" class="tabcontent">
+      <textarea class="pane" id="rssFileTextArea" cols="40" rows="10"></textarea>
+    </div>
+    
+  </div>
 
 <!-- [ Download RSS ] -->
 
-<!-- [ ] Enable cookies to store my default preferences (Note: will not default to unsafe security preferences.) -->
+  <div class="section">
+    <button type="button" class="btn btn-info btn-generate center-button" id="downloadFeed"> <span class="glyphicon glyphicon-download-alt"></span> Download rss.xml</button>
+    <button style="float:right;" type="button" class="btn btn-info btn-generate center-button" id="makeLinkButton" onclick="" disabled> <span class="glyphicon glyphicon-cloud-upload"></span> Upload to your website (coming soon!)</button>
+  </div>
 
+<!-- [ ] Enable cookies to store my default preferences (Note: will not default to unsafe security preferences.) -->
+  </div>
   
+</div>
+
 </div>
 </body>
 </html>

@@ -576,10 +576,20 @@ generateRSS = function() {
   // If the user selected it, the display name and icon are saved as defaults within the feed element using the "rssr:displayName" and "rssr:icon" elements
   saveDefaultDisplayNameIcon(newFile.querySelector("channel"));
   
-  // TODO Preview is generated
+  // Preview is generated
+  populatePreviews(newItem);
   
-  // TODO make actual downlad button instead of this
-  saveFeed(newFile, destFeed.filename);
+  // Download button is updated
+  document.getElementById("downloadFeed").onclick = function () {saveFeed(newFile, destFeed.filename)}
+  
+  // Make new card visible
+  let resultsCard = document.getElementById("resultsCard");
+  if(resultsCard.style.visibility == "hidden") {
+    openTab(null, 'previewPane');
+    document.getElementById("previewButton").className += " active";
+    resultsCard.style.visibility = "visible";
+  }
+  document.getElementById("downloadFeed").scrollIntoView();
 }
 
 // I should really not have functions with 9 arguments...
@@ -713,8 +723,12 @@ addContentDescription = function(newItem,srcContent,srcDescription,srcItemLink,d
     }
   }
   //Addendum;
-  let addendumText = "\n"+document.getElementById("addendumText").value+"\n";
-  if(document.getElementById("md")) addendumText = converter.makeHtml(addendumText);
+  let addendumText = document.getElementById("addendumText").value.trim();
+  if(addendumText){
+    if(document.getElementById("md")) addendumText = "\n"+converter.makeHtml(addendumText)+"\n";
+    else addendumText = "\n"+addendumText+"\n";
+  }
+
   
   // RSSR REBLOG HEADER
   // If there was already a reblog header in the original post, it is REPLACED by the new header (but only from the div to the horizontal rule).
@@ -762,7 +776,7 @@ if(addOPHeader) { newFull += opHeader; }
 
   // ORIGINAL POST 
   // The entire original post is placed here -- except the aforemented REBLOG HEADER and REBLOG FOOTER
-newFull += srcFull.slice(opStart, opEnd);
+newFull += "\n"+srcFull.slice(opStart, opEnd).trim()+"\n";
 
   // ADDENDUM 
   // Only placed if addendum field is not empty
@@ -779,6 +793,7 @@ let addendumHeader = `
         <b>${destFeed.displayName}</b></a> ${addedElement}<time class="rssr-datetime" datetime="${cDateTime.toISOString()}"> on ${cDateTime.toLocaleDateString()}</time>:</i>
       </small></p>
     </div>
+  </div>
 <!-- End RSS-Addendum Header -->
 `
   // Addendum content goes here
@@ -997,3 +1012,64 @@ findTagEnd = function(html, tag, searchPos) {
   //console.log("Returning tag end @ searchPos:",searchPos,html.slice(searchPos));
   return searchPos; 
 }
+
+// preview stuff
+
+populatePreviews = function(newItem) {
+  
+  let html = newItem.querySelector("description").textContent;
+  
+  populateFrame(html);
+  htmlTextArea.textContent = html.trim();
+  document.getElementById("mdTextArea").textContent = converter.makeMarkdown(html.trim());
+  document.getElementById("rssItemTextArea").textContent = serialize(newItem).trim();
+  document.getElementById("rssFileTextArea").textContent = serialize(newFile).trim();
+
+}
+
+//Preview the HTML
+populateFrame = function(html) {
+  
+  // adding some very basic style
+  html = `<!doctype html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body {
+        background-color: white;
+        font-family: sans-serif;
+      }
+      .rssr-section {
+        margin-left: 10%;
+        margin-right: 10%;
+      }
+    </style>
+  </head>
+  <body>
+  <div class="content">
+  ${html}
+  </div>
+  </body>
+</html>`;
+
+  document.getElementById("previewFrame").srcdoc = html;
+  console.log(html);
+  HTML = html;
+}
+
+
+function openTab(evt, tabname) {
+  var i, tabcontent, tablinks;
+  tabcontent = document.getElementsByClassName("tabcontent");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("tablinks");
+  for (i = 0; i < tablinks.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" active", "");
+  }
+  document.getElementById(tabname).style.display = "block";
+  if(evt) evt.currentTarget.className += " active";
+}
+
