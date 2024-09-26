@@ -504,7 +504,7 @@ editPFP = function() {
     destFeed.customDisplayIcon = PFPLink;
   }
   document.getElementById('destFeedIcon').alt = " ";
-  document.getElementById('destFeedIcon').src = destFeed.customDisplayIcon;
+  document.getElementById('destFeedIcon').src = PFPLink;
   document.getElementById('saveDefaultNameIcon').style.display = 'inline';
 }
 
