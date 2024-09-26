@@ -793,7 +793,6 @@ let addendumHeader = `
         <b>${destFeed.displayName}</b></a> ${addedElement}<time class="rssr-datetime" datetime="${cDateTime.toISOString()}"> on ${cDateTime.toLocaleDateString()}</time>:</i>
       </small></p>
     </div>
-  </div>
 <!-- End RSS-Addendum Header -->
 `
   // Addendum content goes here
