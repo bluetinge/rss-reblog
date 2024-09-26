@@ -454,7 +454,7 @@ rssReblogXSSOptions = {
     }
   },
   "stripIgnoreTag":true,
-  "stripIgnoreTagBody":['head','link','script','style'],
+  "stripIgnoreTagBody":['head','link','script','style','iframe'],
   // "stripCommentTag": function (html) {
     // var retHtml = "";
     // var lastPos = 0;
@@ -477,4 +477,44 @@ rssReblogXSSOptions = {
   // "escapeHtml": function (html) {
     // return html.replace(/<(?!!--)/g, "&lt;").replace(/(?<!--)>/g, "&gt;");
   // }
+}
+
+
+// used to filter the text before conversion from html to markdown
+markdownXSSOptions = {
+  "whiteList": {
+    "a":["class","style","target","href","title"],
+    "b":["class","style"],
+    "blockquote":["class","style","cite"],
+    "br":["class","style"],
+    "code":["class","style"],
+    "del":["class","style","datetime"],
+    "em":["class","style"],
+    "h1":["class","style"],
+    "h2":["class","style"],
+    "h3":["class","style"],
+    "h4":["class","style"],
+    "h5":["class","style"],
+    "h6":["class","style"],
+    "hr":["class","style"],
+    "i":["class","style"],
+    "img":["class","style","src","alt","title","width","height","loading"],
+    "li":["class","style"],
+    "ol":["class","style"],
+    "p":["class","style"],
+    "pre":["class","style"],
+    "strong":["class","style"],
+    "table":["class","style","width","border","align","valign"],
+    "tbody":["class","style","align","valign"],
+    "td":["class","style","width","rowspan","colspan","align","valign"],
+    "tfoot":["class","style","align","valign"],
+    "th":["class","style","width","rowspan","colspan","align","valign"],
+    "thead":["class","style","align","valign"],
+    "tr":["class","style","rowspan","align","valign"],
+    "u":["class","style"],
+    "ul":["class","style"],
+  },
+  "css": false,
+  "stripIgnoreTag":true,
+  "stripIgnoreTagBody":['head','link','script','style','iframe'],
 }

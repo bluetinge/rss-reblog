@@ -143,23 +143,23 @@
 <!-- [ Preview pane ] -->
 
     <div id="previewPane" class="tabcontent">
-      <iframe class="pane" id="previewFrame" sandbox="allow-scripts allow-popups"></iframe>
+      <iframe class="pane" id="previewFrame" sandbox="allow-scripts"></iframe>
     </div>
 
     <div id="markdownPane" class="tabcontent">
-      <textarea class="pane" id="mdTextArea" cols="40" rows="10" ></textarea>
+      <textarea class="pane" id="mdTextArea" cols="40" rows="10" onkeydown="displayDisclaimer()"></textarea>
     </div>
 
     <div id="htmlPane" class="tabcontent">
-      <textarea class="pane" id="htmlTextArea" cols="40" rows="10"></textarea>
+      <textarea class="pane" id="htmlTextArea" cols="40" rows="10" onkeydown="displayDisclaimer()"></textarea>
     </div>
     
     <div id="rssItemPane" class="tabcontent">
-      <textarea class="pane" id="rssItemTextArea" cols="40" rows="10"></textarea>
+      <textarea class="pane" id="rssItemTextArea" cols="40" rows="10" onkeydown="displayDisclaimer()"></textarea>
     </div>
 
     <div id="rssFilePane" class="tabcontent">
-      <textarea class="pane" id="rssFileTextArea" cols="40" rows="10"></textarea>
+      <textarea class="pane" id="rssFileTextArea" cols="40" rows="10" ></textarea>
     </div>
     
   </div>
@@ -168,6 +168,7 @@
 
   <div class="section">
     <button type="button" class="btn btn-info btn-generate center-button" id="downloadFeed"> <span class="glyphicon glyphicon-download-alt"></span> Download rss.xml</button>
+    <small id="saveDisclaimer" style="display:none;"><i>Note: Changes made in the editor are not saved to the rss.xml. </i></small>
     <button style="float:right;" type="button" class="btn btn-info btn-generate center-button" id="makeLinkButton" onclick="" disabled> <span class="glyphicon glyphicon-cloud-upload"></span> Upload to your website (coming soon!)</button>
   </div>
 

@@ -69,7 +69,7 @@
         },
         function(result) { 
           console.error(result);
-          displayError(new Error("I tried to load the feed <" + srcFeed.feedURL + ">, but I ran into an error.\nRemember, this needs to be a feed to an RSS file on the Internet.\n\nCheck the developer console for more details."));
+          displayError(new Error("I tried to load the feed '" + srcFeed.feedURL + "', but I ran into an error.\nRemember, this needs to be a feed to an RSS file on the Internet.\n\nCheck the developer console for more details."));
         }
       )
     }
