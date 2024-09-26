@@ -1,0 +1,121 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:rssr="https://purl.org/rssr/terms/">
+  <channel>
+    <title>
+      <![CDATA[bluetinge.dev]]>
+    </title>
+    <atom:link href="https://bluetinge.dev/blog/rss.xml" rel="self" type="application/rss+xml"/>
+    <link>
+      <![CDATA[https://bluetinge.dev/blog]]>
+    </link>
+    <description>
+      <![CDATA[BlueTinges Blog]]>
+    </description>
+    <item>
+      <title>
+        <![CDATA[FirstPost]]>
+      </title>
+      <pubDate>
+        <![CDATA[Tue, 24 Sep 2024 06:52:00 GMT]]>
+      </pubDate>
+      <description>
+        <![CDATA[<p>It's the first post!!</p>]]>
+      </description>
+      <author>
+        <![CDATA[admin@bluetinge.dev (BlueTinge)]]>
+      </author>
+      <link>
+        <![CDATA[https://bluetinge.dev/blog#firstpost]]>
+      </link>
+      <guid>
+        <![CDATA[https://bluetinge.dev/blog#firstpost]]>
+      </guid>
+    </item>
+    <item>
+      <author>
+        admin@bluetinge.dev (Blue Tinge)
+      </author>
+      <title>
+        First Post
+      </title>
+      <guid isPermaLink="false">
+        aac11930-ffbe-4462-a2bc-4681e53d1573
+      </guid>
+      <link>
+        https://bluetinge.dev/blog#firstpost
+      </link>
+      <description>
+        <![CDATA[
+<!-- RSS-Reblog Header -->
+<div class="rssr-item">
+  <div class="rssr-section rssr-reblog-header">
+    <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
+      <a href="https://bluetinge.dev/blog" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+        <img style="max-height:24px;max-width:24px;height:22px;width:22px;"vertical-align:middle;" src="https://staging.cohostcdn.org/avatar/266-1bb8ccae-655b-44b6-830d-3d15e7467a9d-profile.png?dpr=2&width=24&height=24&fit=cover&auto=webp" alt=""> 
+        <b>eggbugger</b>
+      </a> <i> reblogged a <a href="https://bluetinge.dev/blog#firstpost" target="_blank" rel="noopener noreferrer">post</a> from&nbsp; </i> 
+      <a href="https://bluetinge.dev/" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
+        <img style="max-height:24px;max-width:24px;height:24px;width:24px;vertical-align:middle;" src="https://bluetinge.dev/favicon.png" alt="">
+        <b>BlueTinge</b>
+      </a><i><time class="rssr-datetime" datetime="2024-09-26T04:16:14.104Z">on 9/26/2024:</time></i>
+    </small></p>
+  </div>
+  <hr class="rssr-hr rssr-reblog-header-divider">
+<!-- End RSS-Reblog Header -->
+
+<div class="rssr-item">
+
+  <div class="rssr-section rssr-post-original">
+    <div class="rssr-section-header rssr-op-header">
+      <p><small class="rssr-font rssr-op-header-font">
+        <a href="https://bluetinge.dev/blog" target="_blank">
+          <img src="https://www.bluetinge.dev/favicon.png" alt><b>BlueTinge</b>
+        </a><i><a href="https://bluetinge.dev/blog#firstpost" target="_blank">posted</a><time class="rssr-datetime" datetime="2024-09-11 18:14:00 +0000"> on 2024-09-11</time>:</i>
+      </small></p>
+    </div>
+
+
+    <h4>First post!!</h4>
+
+
+  </div>
+<hr class="rssr-hr rssr-hr-mid">
+  <div class="rssr-section rssr-post-addendum">
+    <div class="rssr-section-header rssr-addendum-header">
+      <p><small class="rssr-font rssr-addendum-header-font" style="vertical-align:middle;padding:0.36em;">
+        <a href="https://bluetinge.dev/blog" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+        <img style="max-height:24px;max-width:24px;height:22px;width:22px;"vertical-align:middle;" src="https://staging.cohostcdn.org/avatar/266-1bb8ccae-655b-44b6-830d-3d15e7467a9d-profile.png?dpr=2&width=24&height=24&fit=cover&auto=webp" alt="">
+        <b>eggbugger</b></a> <i><a href="https://bluetinge.dev/blog#firstpost" target="_blank" rel="noopener noreferrer">added</a><time class="rssr-datetime" datetime="2024-09-26T04:16:14.104Z"> on 9/26/2024</time>:</i>
+      </small></p>
+    </div>
+<!-- End RSS-Addendum Header -->
+
+<p>Egg?</p>
+
+  </div>
+  <hr class="rssr-hr rssr-footer-divider">
+  <div class="rssr-section rssr-footer">
+    <p><small class="rssr-font rssr-footer-font" style="vertical-align:middle;color:blue;"><a href="https://purl.org/rssr/reblog?&feed=https%3A%2F%2Fbluetinge.dev%2Fblog%2Frss.xml&guid=aac11930-ffbe-4462-a2bc-4681e53d1573&link=https%3A%2F%2Fbluetinge.dev%2Fblog%23firstpost" target="_blank" rel="noopener noreferrer" class="rssr-reblog-button" style="padding:0.36em;"><img style="height:1em;vertical-align:middle;" src="https://purl.org/rssr/rss-icon" alt=""> <b>Reblog via RSS</b></a></small></p>
+    <script async src="https://purl.org/rssr/script"></script>
+  </div>
+</div>
+
+]]>
+      </description>
+      <category>
+        reblog
+      </category>
+      <pubDate>
+        Thu, 26 Sep 2024 04:16:14 GMT
+      </pubDate>
+    </item>
+    <lastBuildDate>
+      Thu, 26 Sep 2024 04:16:14 GMT
+    </lastBuildDate>
+    <rssr:displayName>
+      eggbugger
+    </rssr:displayName>
+    <rssr:displayIcon>
+      https://staging.cohostcdn.org/avatar/266-1bb8ccae-655b-44b6-830d-3d15e7467a9d-profile.png?dpr=2&amp;width=24&amp;height=24&amp;fit=cover&amp;auto=webp
+    </rssr:displayIcon>
+  </channel>
+</rss>
