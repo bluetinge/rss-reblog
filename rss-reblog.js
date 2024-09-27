@@ -227,7 +227,7 @@ loadSrc = function(srcFeed) {
   srcFeed.title = srcFeed.json.feed.title;
   
   srcItem = null;
-  let errText = "I had trouble finding the item in the feed.\nSometimes, this will happen if the item was only added to the feed very recently.\n\nI tried to find it in a few different ways. These are the problems I ran into:\n";
+  let errText = "I had trouble finding the item in the feed.\nSometimes, this will happen if the item was only added to the feed recently \n(i.e., within the last hour -- this'll be fixed as soon as I can force reload the cache though)\n\nI tried to find it in a few different ways. These are the problems I ran into:\n";
   
   // try given elements 
   if (!srcItem && srcFeed.guid) try { srcItem = loadByGUID(srcFeed.guid, srcFeed.json.items); }
