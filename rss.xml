@@ -2,7 +2,7 @@
     <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:rssr="http://purl.org/rssr/">
     <channel><title>bluetinge.dev</title>
     <atom:link href="https://bluetinge.dev/rss.xml" rel="self" type="application/rss+xml" />
-    <link>https://bluetinge.dev</link>
+    <link>https://bluetinge.dev/blog</link>
     <description>BlueTinge's RSS feed (test)</description>
     <lastBuildDate>Tue, 24 Sep 2024 07:58:33 GMT</lastBuildDate>
     <rssr:item>Test</rssr:item>

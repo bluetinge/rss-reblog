@@ -301,7 +301,7 @@ loadSrc = function(srcFeed) {
   //If no display name was provided, the feed title is used
   if(!srcFeed.displayName) srcFeed.displayName = srcFeed.title;
   // if no display icon is provided, favicon is used
-  if(!srcFeed.displayIcon) srcFeed.displayIcon = getFavicon(srcFeed.feedURL); 
+  if(!srcFeed.displayIcon) srcFeed.displayIcon = getFavicon(srcFeed.feedWebsite); 
 }
   //feed loaded correctly
   // now to fill vars on page 
@@ -737,7 +737,7 @@ let reblogHeader = (replaceReblogHeader ? "" : `
   `)+`<div class="rssr-section rssr-reblog-header">
     <p><small class="rssr-font rssr-reblog-header-font" style="vertical-align:middle;padding:0.36em;">
       <a href="${destFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
-        <img style="max-height:24px;max-width:24px;height:${destH};width:${destW};"vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
+        <img style="max-height:24px;max-width:24px;height:${destH};width:${destW};vertical-align:middle;" src="${destFeed.displayIcon}" alt=""> 
         <b>${destFeed.displayName}</b>
       </a> <i> reblogged a ${postElement} from&nbsp; </i> 
       <a href="${srcFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"> 
