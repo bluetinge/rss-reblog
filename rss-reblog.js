@@ -791,7 +791,7 @@ let addendumHeader = (replaceFooter ? "" : `
     <div class="rssr-section-header rssr-addendum-header">
       <p><small class="rssr-font rssr-addendum-header-font" style="vertical-align:middle;padding:0.36em;">
         <a href="${destFeed.feedWebsite}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
-        <img style="max-height:24px;max-width:24px;height:${destH};width:${destW};"vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
+        <img style="max-height:24px;max-width:24px;height:${destH};width:${destW};vertical-align:middle;" src="${destFeed.displayIcon}" alt="">
         <b>${destFeed.displayName}</b></a> ${addedElement}<time class="rssr-datetime" datetime="${cDateTime.toISOString()}"> on ${cDateTime.toLocaleDateString()}</time>:</i>
       </small></p>
     </div>
