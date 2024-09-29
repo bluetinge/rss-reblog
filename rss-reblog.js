@@ -289,7 +289,7 @@ loadItem = function(xmlDoc, selectorValue, selectorType) {
   
   // extract: author,categories,content,description,enclosure,guid,link,pubDate,thumbnail,title
   itemDict.author = maybe(getNodeWithParent(xmlDoc, "author", item));
-  itemDict.content = maybe(getNodeWithParent(xmlDoc, "content", item));
+  itemDict.content = maybe(getNodeWithParent(xmlDoc, "encoded", item, "content"));
   itemDict.description = maybe(getNodeWithParent(xmlDoc, "description", item));
   itemDict.guid = selectorType == "guid" ? selectorValue : maybe(getNodeWithParent(xmlDoc, "guid", item));
   itemDict.link = selectorType == "link" ? selectorValue : maybe(getNodeWithParent(xmlDoc, "link", item));
@@ -691,7 +691,8 @@ generateRSS = function() {
   addPubDate(newItem,dateTime);
 
   //Add the new item to the channel
-  newFile.querySelector("channel").appendChild(newItem);
+  firstItem = newFile.querySelector("channel").querySelector("item");
+  newFile.querySelector("channel").insertBefore(newItem, firstItem);
   
   // The newly generated feed is the same as before, except:
   // TODO Any new namespaces are added (done when the element is added)
@@ -1033,7 +1034,7 @@ addPubDate = function(newItem,dateTime) {
   // The last build date is updated to the current date/time.
 updateLastBuildDate = function(channel,dateTime) {
     buildElem = channel.querySelector("lastBuildDate");
-    if(!buildElem) channel.appendChild(newFile.createElement("lastBuildDate")).innerHTML = dateTime.toUTCString();
+    if(!buildElem) channel.insertBefore(newFile.createElement("lastBuildDate"),newFile.querySelector("channel").querySelector("item")).innerHTML = dateTime.toUTCString();
     else buildElem.innerHTML = dateTime.toUTCString();
 }
   
@@ -1069,7 +1070,7 @@ saveDefaultDisplayNameIcon = function(channel) {
           break;
         }
       }
-      if(!skip) channel.appendChild(newFile.createElementNS("https://purl.org/rssr/terms/","rssr:displayName")).textContent = destFeed.displayName.trim();
+      if(!skip) channel.insertBefore(newFile.createElementNS("https://purl.org/rssr/terms/","rssr:displayName"), newFile.querySelector("channel").querySelector("item")).textContent = destFeed.displayName.trim();
     }
 
     if(document.getElementById("saveIcon").checked) {
@@ -1081,7 +1082,7 @@ saveDefaultDisplayNameIcon = function(channel) {
           break;
         }
       }
-      if(!skip) channel.appendChild(newFile.createElementNS("https://purl.org/rssr/terms/","rssr:displayIcon")).textContent = destFeed.displayIcon.trim();
+      if(!skip) channel.insertBefore(newFile.createElementNS("https://purl.org/rssr/terms/","rssr:displayIcon"),  newFile.querySelector("channel").querySelector("item")).textContent = destFeed.displayIcon.trim();
     }
   }
 }
