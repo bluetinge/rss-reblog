@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+<meta charset="UTF-8">
 <head>
 <title>RSS Reblogger</title>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
@@ -40,41 +41,59 @@
     if(feedComp && (guidComp || linkComp)) {
       return reblogURL;
     }
-    else return null;
+    else return "";
   }
   
-  displayError = function(e) {
-      document.getElementById("results").innerHTML = '<pre style="color:red">'+e.message+'</pre>';
-      document.getElementById("results2").innerHTML = ""
-      document.getElementById("results2label").innerHTML = ""
+  displayError = function(e,bypassFunc = undefined) {
       console.error(e);
+      document.getElementById("results").innerHTML = '<pre style="color:red">'+e.message+'</pre>';
+      document.getElementById("results2label").innerHTML = "";
+      if(!bypassFunc) document.getElementById("results2").innerHTML = ""; 
+      else{ 
+        document.getElementById("results2").innerHTML = '<p><button id="ignoreButton">Ignore this error and generate anyways</button></p>';
+        document.getElementById("ignoreButton").onclick = bypassFunc;
+      }
   }
   
   testReblogURL = function(reblogURL, successFunc) {
     srcFeed = {};
     try {
       parsePageURL(reblogURL, srcFeed);
-      getExternalFeed(
+      getExternalFeedXML(
         srcFeed.feedURL, 
         function(result) { 
           try{
           console.log(result);
-          // RSS2JSON-specific
-          srcFeed.json = result;
-          loadSrc(srcFeed);
+          loadSrcXML(srcFeed, result);
           successFunc(srcFeed);
           } catch(e) {
-            displayError(e);
+            displayError(e, successFunc);
           }
         },
         function(result) { 
-          console.error(result);
-          displayError(new Error("I tried to load the feed '" + srcFeed.feedURL + "', but I ran into an error.\nRemember, this needs to be a feed to an RSS file on the Internet.\n\nCheck the developer console for more details."));
+          console.log("Result with XML: ", result);
+          console.log("Trying JSON")
+          getExternalFeedJSON(
+            srcFeed.feedURL,
+            function(result) {
+              try{
+              console.log(result);
+              loadSrcJSON(srcFeed, result);
+              successFunc(srcFeed);
+              } catch(e) {
+                displayError(e, successFunc);
+              }
+            }, 
+            function(result) {
+              console.error(result);
+              displayError(new Error("I tried to load the feed '" + srcFeed.feedURL + "', but I ran into an error.\nRemember, this needs to be an RSS (not ATOM) feed accessible on the Internet.\n\nCheck the developer console for more details."), successFunc);
+            }
+          )
         }
       )
     }
     catch(e) {
-      displayError(e);
+      displayError(e, successFunc);
     }
   }
   
@@ -92,7 +111,11 @@
   
   displayReblogURL = function() {
     let reblogURL = makeReblogURL();
+    document.getElementById("results").innerHTML = "";
+    document.getElementById("results2").innerHTML = "";
+    document.getElementById("results2label").innerHTML = "";
     testReblogURL(reblogURL, function(srcFeed) {
+        
         document.getElementById("results").innerHTML = "<p>Generated link: <code><a href="+reblogURL+">"+reblogURL+"</a></code></p>";
         
         let buttonCode = '<!-- RSS Reblog Button -->\n\
@@ -107,7 +130,7 @@
         document.getElementById("results2").innerHTML = '<textarea style="width:100%; margin:20px; margin-top:10px; font-family: monospace" rows="10">'+buttonCode+'</textarea>';
         
         
-        document.getElementById("srcFeedDisplayName").innerText = srcFeed.displayName;
+        document.getElementById("srcFeedDisplayName").innerText = srcFeed.displayName ? srcFeed.displayName : "Anonymous";
         document.getElementById('srcFeedIcon').src = srcFeed.displayIcon;
         document.getElementById("profileInfoBox").style.display = "block";
         
@@ -158,7 +181,7 @@
       <p style="vertical-align:middle;margin-bottom:0px;">Your profile will be displayed as:
         <small style="padding:0.36em;"><span class="rssr-font rssr-reblog-header" >
           <a style="text-decoration:none"> 
-            <img style="max-height:24px;max-width:24px;vertical-align:middle;" src="default-profile.png" alt="(Image not found)" id="srcFeedIcon">
+            <img style="max-height:24px;max-width:24px;vertical-align:middle;" src="default-profile.png" alt=" " id="srcFeedIcon">
             <b id="srcFeedDisplayName">Name</b>
           </a>
         </span></small>, but you can customize it below:

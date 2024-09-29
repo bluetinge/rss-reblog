@@ -1,21 +1,46 @@
 
+// RSS-Reblog
 
-// Feeds are loaded from links via rss2json, to circumvent cross-origin policy
-// TODO: change to something better 
-getExternalFeed = function (feedURL, successFunc, errorFunc) {
-  if (!(feedURL.startsWith("http"))) feedURL = "https://"+feedURL;
+// Perhaps this shouldn't all be in one file
+// Some people might say thats bad coding style, even
+// (They would be right)
 
-  $.ajax({
-    type: 'GET',
-    url: "https://api.rss2json.com/v1/api.json?rss_url=" + feedURL,
-    dataType: 'jsonp',
-    success: successFunc,
-    error: function(result) {
-      console.log("Error recieved when attempting to load: "+feedURL+ ":\n", result);
-      errorFunc(result);
+// Get feed via XMLHttpRequest thru a CORS proxy 
+// TODO: Use RSS2JSON as backup
+
+getExternalFeedXML = function (feedURL, successFunc, errorFunc) {
+  const req = new XMLHttpRequest();
+  req.addEventListener("load", function() {
+    if (this.status == 200) {
+      // conversion to the rss2json format bc im eepy
+      try {
+        successFunc(this.responseXML);
+      }
+      catch(e) {
+        console.log("Document from "+feedURL+" loaded, but could not be parsed as a feed. Encountered error:\n");
+        console.error(e);
+        errorFunc(e);
+      }    
+    }
+    else {
+      let err = "Error recieved when attempting to load: "+feedURL+"\n"+this.responseText;
+      console.log(this);
+      console.error(err);
+      errorFunc(err);
     }
   });
+  req.addEventListener("error", function() {
+    let err = "Error recieved when attempting to load: "+feedURL+": Failure to contact proxy server\n";
+    console.error(err);
+    errorFunc(err);
+  });
+  req.open("GET", "https://dopcom.net/~bluetinge/corsproxy?&feed="+encodeURIComponent(feedURL));
+  req.send();
 }
+
+
+
+
 
 getFavicon = function(feedURL) {
   let srcLink = 'https://www.google.com/s2/favicons?size=24&domain=' + feedURL;
@@ -152,68 +177,156 @@ initRSSReblogMain = function(pageURL) {
   //let pageURL = window.location.href; //uncomment to use actual URL
   parsePageURL(pageURL, srcFeed);
 
-  //  1.2 Attempt to load the source feed
-  getExternalFeed(
-    srcFeed.feedURL, 
-    function(result) { 
-      try{
-      console.log(result);
-      // RSS2JSON-specific
-      srcFeed.json = result;
-      loadSrc(srcFeed);
-      displaySrc();
-      } catch(e) {
-         errorTop.innerText = e.toString();
-        console.error(e);
-      }
-    },
-    function(result) { 
-      e = new Error(`I tried to load the feed <${srcFeed.feedURL}>, but I ran into an error. Remember, this needs to be a feed to an RSS file on the Internet.\nCheck the developer console for more details.`);
-      errorTop.innerText = e.toString();
-      console.error(e);
+  let successFuncXML = function(result) { 
+    try{
+    console.log(result);
+    // RSS2JSON-specific
+    loadSrcXML(srcFeed, result);
+    displaySrc();
+    } catch(e) {
+       errorTop.innerText = e.toString();
+       console.error(e);
     }
-  )
+  }
+  
+  //RSS2JSON can apparently handle atom feeds
+  // so I'm very sloppily putting this code back
+  // todo: refactor so it is not literally spaghetti???
+  let successFuncJSON = function(result) { 
+    try{
+    console.log(result);
+    // RSS2JSON-specific
+    loadSrcJSON(srcFeed, result);
+    displaySrc();
+    } catch(e) {
+       errorTop.innerText = e.toString();
+       console.error(e);
+    }
+  }
+  
+  let errorFuncXML = function(result) { 
+    //try json 
+    console.error(result);
+    console.log("Trying JSON")
+    getExternalFeedJSON(
+      srcFeed.feedURL, 
+      successFuncJSON,
+      errorFuncJSON
+    );
+  }
+  
+  let errorFuncJSON = function(result) { 
+    e = new Error(`I tried to load the feed <${srcFeed.feedURL}>, but I ran into an error. Remember, this needs to be a feed to an RSS file on the Internet.\nCheck the developer console for more details.`);
+    errorTop.innerText = e.toString();
+    console.error(e);
+  }
+
+  console.log("Trying XML");
+  //  1.2 Attempt to load the source feed
+  getExternalFeedXML(
+    srcFeed.feedURL, 
+    successFuncXML,
+    errorFuncXML
+  );
 }
 
 
 
   //2. From the source feed, determine if the guid can be found. Load the source pfp and name, and the source item tags.
 
-loadByGUID = function(guid,items) {
-  /* Loading via RSS2JSON */
-  let retItem = null;
-  for (item of items) {
-    if (guid === item.guid || (guid.trim() && guid.trim() === item.guid.trim()) ){
-      if (retItem != null) {
-        throw new Error(`The GUID ${guid} occurs multiple times in the source feed`);
+// Helper function to get a single child element of a given parent
+// returns null if nothing matches or undefined if multipe nodes match
+// NS is optional, and is undefined by default
+// - if not given / undefined: will prioritize matching null NS 
+// - if null: will only match null NS
+// - if "*", any NS will match
+getNodeWithParent = function(xmlDoc, childName, parentNode, ns = undefined ) {
+  let result = null;
+  let result_nonNS = null;
+  xmlDoc.querySelectorAll(childName).forEach( function(childNode) {
+    if(childNode.parentNode == parentNode){
+      if(childNode.namespaceURI == ns || item.lookupNamespaceURI(ns) && childNode.namespaceURI == item.lookupNamespaceURI(ns) || ns == "*" ) {
+        result = result === null ? childNode : undefined;
       }
-      retItem = item;
+      result_nonNS = result_nonNS === null ? childNode : undefined; // match without accounting for NS
+    }
+  }) 
+  if (ns === undefined && result === null) return result_nonNS;
+  return result;
+}
+// another helper function
+maybe = function(e) {return e ? (e.textContent ? e.textContent.trim() : undefined) :  undefined;}
+
+loadItem = function(xmlDoc, selectorValue, selectorType) {
+  /* Loading via XML */
+  item = null;
+  let channel = xmlDoc.querySelector("channel");
+  
+  for (itemChild of xmlDoc.querySelectorAll(selectorType)) {
+    if(itemChild.namespaceURI) continue; //needs to be null NS (TODO: non-null NS as a backup)
+    if(itemChild.parentNode.tagName != "item") continue;
+    if(itemChild.parentNode.parentNode.tagName != "channel") continue;
+    
+    let itemValue = itemChild.textContent;
+    if (selectorValue === itemValue || (selectorValue.trim() && selectorValue.trim() === itemValue.trim()) ){
+      if (item != null) {
+        throw new Error(`The ${selectorType} ${selectorValue} occurs multiple times in the source feed`);
+      }
+      item = itemChild.parentNode;
     }
   }
-  if (retItem == null) {
-    throw new Error(`The GUID ${guid} was not found in the source feed`);
+  if (item == null) {
+    throw new Error(`The ${selectorType} ${selectorValue} was not found in the source feed`);
   }
-  return retItem;
-}
+  
+  console.log(item, selectorValue, selectorType);
+  
+  // ehhh for compatibility reasons I'm doing it this way
+  // I know we are losing data and I'm not a fan of it either but
+  // sometimes you have to publish to stop fiddling with the punctuation
 
-loadByLink = function(postLink,items) {
-  /* Loading via RSS2JSON */
-  let retItem = null;
-  for (item of items) {
-    if (postLink === item.link || (postLink.trim() && postLink.trim() === item.link.trim()) ){
-      if (retItem != null) {
-        throw new Error(`The link ${postLink} occurs multiple times in the source feed`);
-      }
-      retItem = item;
+  itemDict = {};
+  
+  // extract: author,categories,content,description,enclosure,guid,link,pubDate,thumbnail,title
+  itemDict.author = maybe(getNodeWithParent(xmlDoc, "author", item));
+  itemDict.content = maybe(getNodeWithParent(xmlDoc, "content", item));
+  itemDict.description = maybe(getNodeWithParent(xmlDoc, "description", item));
+  itemDict.guid = selectorType == "guid" ? selectorValue : maybe(getNodeWithParent(xmlDoc, "guid", item));
+  itemDict.link = selectorType == "link" ? selectorValue : maybe(getNodeWithParent(xmlDoc, "link", item));
+  itemDict.pubDate = maybe(getNodeWithParent(xmlDoc, "pubDate", item));
+  itemDict.thumbnail = maybe(getNodeWithParent(xmlDoc, "thumbnail", item));
+  if (!itemDict.thumbnail) {
+    let n = getNodeWithParent(xmlDoc, "thumbnail", item);
+    if (n) {
+      console.log(n);
+      itemDict.thumbnail = n.getAttribute("url");
+      if(!itemDict.thumbnail) itemDict.thumbnail = n.getAttribute("href");
     }
   }
-  if (retItem == null) {
-    throw new Error(`The link ${postLink} was not found in the source feed`);
+  itemDict.title = maybe(getNodeWithParent(xmlDoc, "title", item));
+  
+  itemDict.categories = [];
+  itemDict.enclosure = {};
+
+  encElem = getNodeWithParent(xmlDoc, "enclosure", item);
+  if(encElem){
+    let lenAttr = encElem.getAttribute("length");
+    let urlAttr = encElem.getAttribute("url");
+    let typeAttr = encElem.getAttribute("type");
+    if (lenAttr) itemDict.enclosure.length = lenAttr.trim();
+    if (urlAttr) itemDict.enclosure.link = urlAttr.trim();
+    if (typeAttr) itemDict.enclosure.type = typeAttr.trim();
   }
-  return retItem;
+  
+  xmlDoc.querySelectorAll("category").forEach(function (e) {
+    if (maybe(e)) itemDict.categories.concat(maybe(e));
+  })
+  
+  return itemDict;
 }
 
-loadSrc = function(srcFeed) {
+
+loadSrcXML = function(srcFeed, xmlDoc) {
   
   // Loads by GUID if present, or link if not
   // Attempt to fix errors by:
@@ -223,50 +336,51 @@ loadSrc = function(srcFeed) {
   //  - add https, http and try again
   //  - remove http / https altogether and try again
   
-  /* Loading via RSS2JSON */
-  srcFeed.title = srcFeed.json.feed.title;
+  /* Loading via XMLHttpRequest */
+  srcFeed.xmlDoc = xmlDoc;
   
+  // Try to find source item
   srcItem = null;
   let errText = "I had trouble finding the item in the feed.\nSometimes, this will happen if the item was only added to the feed recently \n(i.e., within the last hour -- this'll be fixed as soon as I can force reload the cache though)\n\nI tried to find it in a few different ways. These are the problems I ran into:\n";
   
   // try given elements 
-  if (!srcItem && srcFeed.guid) try { srcItem = loadByGUID(srcFeed.guid, srcFeed.json.items); }
+  if (!srcItem && srcFeed.guid) try { srcItem = loadItem(xmlDoc, srcFeed.guid, "guid"); }
   catch (e) { errText += " - "+e.message+"\n"; }
-  if (!srcItem && srcFeed.postLink) try { srcItem = loadByLink(srcFeed.postLink, srcFeed.json.items); }
+  if (!srcItem && srcFeed.postLink) try { srcItem = loadItem(xmlDoc, srcFeed.postLink, "link"); }
   catch (e) { errText += " - "+e.message+"\n"; }
   
   // try again, but with adding https:// if not present
   if (!srcItem && srcFeed.guid && !srcFeed.guid.startsWith("http")) {
-    try { srcItem = loadByGUID("https://"+srcFeed.guid, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
-    if (!srcItem) try { srcItem = loadByGUID("http://"+srcFeed.guid, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    try { srcItem = loadItem(xmlDoc, "https://"+srcFeed.guid, "guid"); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadItem(xmlDoc, "http://"+srcFeed.guid, "guid"); } catch (e) { errText += " - "+e.message+"\n"; }
   }
   if (!srcItem && srcFeed.postLink && !srcFeed.postLink.startsWith("http")) {
-    try { srcItem = loadByLink("https://"+srcFeed.postLink, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
-    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.postLink, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    try { srcItem = loadItem(xmlDoc, "https://"+srcFeed.postLink,"link"); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadItem(xmlDoc, "http://"+srcFeed.postLink, "link"); } catch (e) { errText += " - "+e.message+"\n"; }
   }
   
   // try again, but with removing http:// or https:// if present (and trying the other one)
   if (!srcItem && srcFeed.guid && srcFeed.guid.startsWith("https://")) {
-    try { srcItem = loadByGUID(srcFeed.guid.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
-    if (!srcItem) try { srcItem = loadByGUID("http://"+srcFeed.guid.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    try { srcItem = loadItem(xmlDoc, srcFeed.guid.substr(8), "guid"); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadItem(xmlDoc, "http://"+srcFeed.guid.substr(8), "guid"); } catch (e) { errText += " - "+e.message+"\n"; }
   }
   if (!srcItem && srcFeed.guid && srcFeed.guid.startsWith("http://")) {
-    try { srcItem = loadByGUID(srcFeed.guid.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
-    if (!srcItem) try { srcItem = loadByGUID("https://"+srcFeed.guid.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    try { srcItem = loadItem(xmlDoc, srcFeed.guid.substr(7), "guid"); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadItem(xmlDoc, "https://"+srcFeed.guid.substr(7), "guid"); } catch (e) { errText += " - "+e.message+"\n"; }
   }
   if (!srcItem && srcFeed.postLink && srcFeed.postLink.startsWith("https://")) {
-    try { srcItem = loadByLink(srcFeed.postLink.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
-    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.postLink.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    try { srcItem = loadItem(xmlDoc, srcFeed.postLink.substr(8), "link"); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadItem(xmlDoc, "http://"+srcFeed.postLink.substr(8), "link"); } catch (e) { errText += " - "+e.message+"\n"; }
   }
   if (!srcItem && srcFeed.postLink && srcFeed.postLink.startsWith("http://")) {
-    try { srcItem = loadByLink(srcFeed.postLink.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
-    if (!srcItem) try { srcItem = loadByLink("https://"+srcFeed.postLink.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    try { srcItem = loadItem(xmlDoc, srcFeed.postLink.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadItem(xmlDoc, "https://"+srcFeed.postLink.substr(7), "link"); } catch (e) { errText += " - "+e.message+"\n"; }
   }
   
   // try swapping given elements 
-  if (!srcItem && srcFeed.postLink) try { srcItem = loadByGUID(srcFeed.postLink, srcFeed.json.items); }
+  if (!srcItem && srcFeed.postLink) try { srcItem = loadItem(xmlDoc, srcFeed.postLink, "guid"); }
   catch (e) { errText += " - "+e.message+"\n"; }
-  if (!srcItem && srcFeed.guid) try { srcItem = loadByLink(srcFeed.guid, srcFeed.json.items); }
+  if (!srcItem && srcFeed.guid) try { srcItem = loadItem(xmlDoc, srcFeed.guid, "link"); }
   catch (e) { errText += " - "+e.message+"\n"; }
   
   // could do additional error checking but that's enough for now, methinks
@@ -274,8 +388,22 @@ loadSrc = function(srcFeed) {
       throw new Error(errText);
   }
 
+  // loading elements of channel
+  let channel = xmlDoc.querySelector("channel");
+  
+  // Feeds are required to have a title
+  srcFeed.title = maybe(getNodeWithParent(xmlDoc, "title",channel));
+  if (!srcFeed.title){console.error("Feed title not found\n"); srcFeed.title = "Anonymous";}
+
   // feedWebsite is sometimes a link to a website, blog, etc. instead of a feed
-  srcFeed.feedWebsite = srcFeed.json.feed.link;
+  // note: not atom:link, so we specify no namespace 
+  srcFeed.feedWebsite = null;
+  for (e of xmlDoc.getElementsByTagNameNS("","link")) {
+    if(e.parentNode === channel){
+      srcFeed.feedWebsite = maybe(e);
+      break;
+    }
+  }
   if(!srcFeed.feedWebsite) srcFeed.feedWebsite = srcFeed.feedURL;
   // use provided feedURL if it cant be found
   
@@ -424,7 +552,7 @@ async function getDestFromFile() {
     
   //4. On load, display the determined display name and pfp.
 loadDest = function() {
-  console.log(destFeed);
+  //console.log(destFeed);
   
   // has a default been saved in a file?
   for (e of destFeed.file.getElementsByTagNameNS("https://purl.org/rssr/terms/","displayName")) {
@@ -778,10 +906,6 @@ newFull += "\n"+srcFull.slice(opStart, opEnd).trim()+"\n";
 
   // ADDENDUM 
   // Only placed if addendum field is not empty
-  console.log(opStart)
-  console.log(opEnd)
-  srcFullGB = srcFull;
-  console.log(newFull);
 
 let addendumHeader = (replaceFooter ? "" : `
 <!-- RSS-Addendum Header -->
@@ -814,9 +938,6 @@ if(replaceFooter){
 
   // RSS REBLOG FOOTER 
   // If there was already a reblog footer in the original post, it is REPLACED by the new footer (but only from the hr to the br)
-
-console.log(replaceFooter);
-console.log(newFull);
 
 let reblogFooter = (replaceFooter ? "" : `
 <!-- RSS-Reblog Footer (Reblog Button) -->`)+(dontAddEndDivToTopOfFooter ? "" : `
@@ -969,9 +1090,9 @@ saveDefaultDisplayNameIcon = function(channel) {
 addEnclosure = function (newItem, enclosure){
   if(enclosure.length, enclosure.link, enclosure.type){
     let enc = newFile.createElement("enclosure");
-    enc.appendChild(newFile.createElement("length")).innerHTML = enclosure.length;
-    enc.appendChild(newFile.createElement("url")).innerHTML = enclosure.link;
-    enc.appendChild(newFile.createElement("type")).innerHTML = enclosure.type;
+    enc.setAttribute("length",enclosure.length);
+    enc.setAttribute("url", enclosure.link);
+    enc.setAttribute("type", enclosure.type);
     newItem.appendChild(enc);
   }
 }
@@ -1096,3 +1217,157 @@ function openTab(evt, tabname) {
 function displayDisclaimer() {
   document.getElementById("saveDisclaimer").style.display = "inline";
 }
+
+
+// ARCHIVED
+
+// Loading via rss2json
+
+// This can always be a backup
+
+// Feeds are loaded from links via rss2json, to circumvent cross-origin policy
+// TODO: change to something better 
+getExternalFeedJSON = function (feedURL, successFunc, errorFunc) {
+  if (!(feedURL.startsWith("http"))) feedURL = "https://"+feedURL;
+
+  $.ajax({
+    type: 'GET',
+    url: "https://api.rss2json.com/v1/api.json?rss_url=" + feedURL,
+    dataType: 'jsonp',
+    success: successFunc,
+    error: function(result) {
+      console.log("Error recieved when attempting to load: "+feedURL+ ":\n", result);
+      errorFunc(result);
+    }
+  });
+}
+
+  //2. From the source feed, determine if the guid can be found. Load the source pfp and name, and the source item tags.
+
+loadByGUID = function(guid,items) {
+  /* Loading via RSS2JSON */
+  let retItem = null;
+  for (item of items) {
+    if (guid === item.guid || (guid.trim() && guid.trim() === item.guid.trim()) ){
+      if (retItem != null) {
+        throw new Error(`The GUID ${guid} occurs multiple times in the source feed`);
+      }
+      retItem = item;
+    }
+  }
+  if (retItem == null) {
+    throw new Error(`The GUID ${guid} was not found in the source feed`);
+  }
+  return retItem;
+}
+
+loadByLink = function(postLink,items) {
+  /* Loading via RSS2JSON */
+  let retItem = null;
+  for (item of items) {
+    if (postLink === item.link || (postLink.trim() && postLink.trim() === item.link.trim()) ){
+      if (retItem != null) {
+        throw new Error(`The link ${postLink} occurs multiple times in the source feed`);
+      }
+      retItem = item;
+    }
+  }
+  if (retItem == null) {
+    throw new Error(`The link ${postLink} was not found in the source feed`);
+  }
+  return retItem;
+}
+
+loadSrcJSON = function(srcFeed, result) {
+  
+  // Loads by GUID if present, or link if not
+  // Attempt to fix errors by:
+  //  - searching for link if guid cannot be found, or vice versa
+  //  - removing stuff past the url and searching again
+  //  - replace https with http and try again
+  //  - add https, http and try again
+  //  - remove http / https altogether and try again
+  
+  /* Loading via RSS2JSON */
+  srcFeed.json = result;
+  
+  srcFeed.title = srcFeed.json.feed.title;
+  
+  srcItem = null;
+  let errText = "I had trouble finding the item in the feed.\nSometimes, this will happen if the item was only added to the feed very recently.\n\nI tried to find it in a few different ways. These are the problems I ran into:\n";
+  
+  // try given elements 
+  if (!srcItem && srcFeed.guid) try { srcItem = loadByGUID(srcFeed.guid, srcFeed.json.items); }
+  catch (e) { errText += " - "+e.message+"\n"; }
+  if (!srcItem && srcFeed.postLink) try { srcItem = loadByLink(srcFeed.postLink, srcFeed.json.items); }
+  catch (e) { errText += " - "+e.message+"\n"; }
+  
+  // try again, but with adding https:// if not present
+  if (!srcItem && srcFeed.guid && !srcFeed.guid.startsWith("http")) {
+    try { srcItem = loadByGUID("https://"+srcFeed.guid, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByGUID("http://"+srcFeed.guid, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  if (!srcItem && srcFeed.postLink && !srcFeed.postLink.startsWith("http")) {
+    try { srcItem = loadByLink("https://"+srcFeed.postLink, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.postLink, srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  
+  // try again, but with removing http:// or https:// if present (and trying the other one)
+  if (!srcItem && srcFeed.guid && srcFeed.guid.startsWith("https://")) {
+    try { srcItem = loadByGUID(srcFeed.guid.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByGUID("http://"+srcFeed.guid.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  if (!srcItem && srcFeed.guid && srcFeed.guid.startsWith("http://")) {
+    try { srcItem = loadByGUID(srcFeed.guid.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByGUID("https://"+srcFeed.guid.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  if (!srcItem && srcFeed.postLink && srcFeed.postLink.startsWith("https://")) {
+    try { srcItem = loadByLink(srcFeed.postLink.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByLink("http://"+srcFeed.postLink.substr(8), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  if (!srcItem && srcFeed.postLink && srcFeed.postLink.startsWith("http://")) {
+    try { srcItem = loadByLink(srcFeed.postLink.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+    if (!srcItem) try { srcItem = loadByLink("https://"+srcFeed.postLink.substr(7), srcFeed.json.items); } catch (e) { errText += " - "+e.message+"\n"; }
+  }
+  
+  // try swapping given elements 
+  if (!srcItem && srcFeed.postLink) try { srcItem = loadByGUID(srcFeed.postLink, srcFeed.json.items); }
+  catch (e) { errText += " - "+e.message+"\n"; }
+  if (!srcItem && srcFeed.guid) try { srcItem = loadByLink(srcFeed.guid, srcFeed.json.items); }
+  catch (e) { errText += " - "+e.message+"\n"; }
+  
+  // could do additional error checking but that's enough for now, methinks
+  if(!srcItem) {
+      throw new Error(errText);
+  }
+
+  // feedWebsite is sometimes a link to a website, blog, etc. instead of a feed
+  srcFeed.feedWebsite = srcFeed.json.feed.link;
+  if(!srcFeed.feedWebsite) srcFeed.feedWebsite = srcFeed.feedURL;
+  // use provided feedURL if it cant be found
+  
+  // scrub srcFeed.feedWebsite, srcFeed.displayIcon, and srcItem.link to prevent XSS, in theory
+  srcFeed.feedWebsite = scrubLink(srcFeed.feedWebsite);
+  srcFeed.displayIcon = scrubLink(srcFeed.displayIcon);
+  srcItem.link = scrubLink(srcItem.link);
+  // we don't use display the image but it should probably still be scrubbed 
+  srcItem.thumbnail = scrubLink(srcItem.thumbnail);
+  
+  // using filterXSS to scrub non-links
+  srcFeed.title = filterXSS(srcFeed.title);
+  srcItem.author = filterXSS(srcItem.author)
+  for (i in srcItem.categories) srcItem.categories[i] = filterXSS(srcItem.categories[i]);
+  srcItem.author = filterXSS(srcItem.author)
+  for (key in srcItem.enclosure) srcItem.enclosure[key] = filterXSS(srcItem.enclosure[key]);
+  srcItem.guid = filterXSS(srcItem.guid); //potentially a bad idea?
+  srcItem.pubDate = filterXSS(srcItem.pubDate);
+  srcItem.title = filterXSS(srcItem.title);
+
+  //note: content/description are filtered later based on user selections
+  
+  //If no display name was provided, the feed title is used
+  if(!srcFeed.displayName) srcFeed.displayName = srcFeed.title;
+  // if no display icon is provided, favicon is used
+  if(!srcFeed.displayIcon) srcFeed.displayIcon = getFavicon(srcFeed.feedWebsite); 
+}
+
