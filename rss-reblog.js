@@ -269,8 +269,38 @@ initRSSReblogMain = function(pageURL) {
   
   // Populate the dropdown
   if(populateSavedFiles()) getDestFromLocalStorage();
+  console.log("MEOW", location.origin);
 }
 
+populateSavedFiles = function() {
+  // Load the array of ID names 
+  let feedsArray = localStorage.getItem("feeds") ? JSON.parse(localStorage.getItem("feeds")) : []; 
+  if (feedsArray.length == 0) {
+    if (false && document.hasStorageAccess && !document.hasStorageAccess()) {
+      document.getElementById("destLocalLoad").innerHTML = `<option value="none">Access to local storage was denied. <b>Click here to request access</b></option>`;
+      document.getElementById("destLocalLoad").onclick = requestLocalStorage;
+      document.getElementById("destLocalLoad").disabled = false;
+      document.getElementById("destLocalLoad").onclick = requestLocalStorage;
+      document.getElementById("localRadio").disabled = false;
+    }
+    return false;
+  }
+  
+  let optionHTML = "";
+  for (obj of feedsArray) {
+    optionHTML = `<option value=${obj.id}>${obj.name}</option>\n${optionHTML}`;
+  }
+  
+  document.getElementById("destLocalLoad").disabled = false;
+  document.getElementById("destLocalLoad").innerHTML = optionHTML;
+  document.getElementById("localRadio").disabled = false;
+  
+  return true;
+}
+
+requestLocalStorage = function () {
+  
+}
 
 
   //2. From the source feed, determine if the guid can be found. Load the source pfp and name, and the source item tags.
@@ -498,27 +528,12 @@ displaySrc = function() {
 
 // Dest file may be selected from saved files, uploaded from the user's device, or retrieved from a link on the Internet.
 // Returns true if there are saved files
-populateSavedFiles = function() {
-  // Load the array of ID names 
-  let feedsArray = localStorage.getItem("feeds") ? JSON.parse(localStorage.getItem("feeds")) : []; 
-  if (feedsArray.length == 0) return false;
-  
-  let optionHTML = "";
-  for (obj of feedsArray) {
-    optionHTML = `<option value=${obj.id}>${obj.name}</option>\n${optionHTML}`;
-  }
-  
-  document.getElementById("destLocalLoad").disabled = false;
-  document.getElementById("destLocalLoad").innerHTML = optionHTML;
-  document.getElementById("localRadio").disabled = false;
-  
-  return true;
-}
 
 getDestFromLocalStorage = function() {
   errorDestFeedInfo.style.display = 'none';
   try {
     let id = document.getElementById("destLocalLoad").value;
+    if (id == "none") return false;
     let parser = new DOMParser();
     destFeed.file = parser.parseFromString(localStorage.getItem(id), "text/xml");
     
