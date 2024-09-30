@@ -60,7 +60,8 @@ scrubLink = function (unsafeLink) {
 
 // parse the URL by parameter
 parsePageURL = function(pageURL, srcFeed){
-  let searchParams = new URLSearchParams(pageURL);
+  searchParams = new URLSearchParams(pageURL);
+  
   srcFeed.feedURL = scrubLink(searchParams.get("feed"));
   srcFeed.guid = searchParams.get("guid");
   // OPTIONAL PARAM:
@@ -209,6 +210,10 @@ initRSSReblogMain = function(pageURL) {
   //let pageURL = "rssr.dev/reblog?&feed=https%3A%2F%2Fwww.bluetinge.dev%2Frss.xml&guid=https%3A%2F%2Fbluetinge.github.io%2Fregex-crossword%2F8"; //sample
   //let pageURL = window.location.href; //uncomment to use actual URL
   parsePageURL(pageURL, srcFeed);
+  
+  // Is this window embedded in an iframe?
+  isIFrame = (new URLSearchParams(pageURL).get("iframe") == "true");
+  if(isIFrame) for (e of document.getElementsByTagName("body")) {e.style = "background: none transparent;";}
 
   let successFuncXML = function(result) { 
     try{

@@ -1,35 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {font-family: Arial, Helvetica, sans-serif;}
 
-
-function showModal()
-{
-  $('#modal').show();
+/* The Modal (background) */
+.rssr-modal-background {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 255; /* Sit on top */
+  /*padding-top: 100px; /* Location of the box */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  /*overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
 }
 
-function hideModal()
-{
-  $('#modal').hide();
-}
-#modal {
-  position: fixed;
-  left: 10%;
-  top: 10%;
-  height: 300px;
-  width: 80%;
-  background-color: white;
-  display: none;
-}
-
-.close {
+/* Modal Content */
+.rssr-modal-content {
   position: absolute;
-  right: -5px;
-  top: -5px;
-  background-color: white;
-  border-radius: 50%;
-  border: 1px solid black;
-  text-align: center;
+  left: 5%;
+  top: 5%;
+  margin: 0px;
+  padding: 0px;
+  width: 90%;
+  height: 90%;
+  background-color: transparent;
+  border: 4px solid #888;
 }
 
-iframe {
+/* The Close Button */
+.rssr-modal-close {
+  z-index: 256;
+  position:absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 84px;
+  font-weight: bold;
+  color: white;
+  margin: 0px;
+  padding: 0px;
+  width: 60px;
+  height: 60px;
+  line-height: 60px;
+  text-align: center;
+  vertical-align: middle;
+  overflow:hidden;
+  /*
+  background-color: #fefefe;
+  border: 4px solid #888;
+  border-radius: 20px;
+  float: right;
+  */
+}
+
+.rssr-modal-close:hover,
+.rssr-modal-close:focus {
+  color: red;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rssr-modal-iframe {
+  position: absolute;
   width: 100%;
   height: 100%;
 }
+
+</style>
+</head>
+<body>
+
+<h2>Modal Example</h2>
+
+<!-- Trigger/Open The Modal -->
+<button id="myBtn">Open Modal</button>
+
+<!-- The Modal -->
+<div id="myModal" class="rssr-modal-background">
+
+  <!-- Modal content -->
+  <div class="rssr-modal-content">
+    <div class="rssr-modal-close">&times;</div>
+    <iframe class="rssr-modal-iframe" allowtransparency="true" src="http://127.0.0.1:8000/rss-reblog.html?&feed=https%3A%2F%2Fbluetinge.dev%2Frss.xml&guid=firstreblog&iframe=true">
+    Your browser doesn't support iframes. Click <a href="http://127.0.0.1:8000/rss-reblog.html?&feed=https%3A%2F%2Fbluetinge.dev%2Frss.xml&guid=firstreblog&iframe=true">here</a> to open ReSShaRe in a new window instead.
+    </iframe>
+  </div>
+
+</div>
+
+<script>
+// When the user click, attempt to open the modal
+// If it successfully opens, suppress default click behavior
+// Get the modal
+var modal = document.getElementById("myModal");
+
+// Get the button that opens the modal
+var btn = document.getElementById("myBtn");
+
+// Get the <span> element that closes the modal
+var span = document.getElementsByClassName("rssr-modal-close")[0];
+
+// When the user clicks the button, open the modal 
+btn.onclick = function() {
+  modal.style.display = "block";
+}
+
+// When the user clicks on <span> (x), close the modal
+span.onclick = function() {
+  modal.style.display = "none";
+}
+
+// When the user clicks anywhere outside of the modal, close it
+window.onclick = function(event) {
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+}
+</script>
+
+</body>
+</html>
