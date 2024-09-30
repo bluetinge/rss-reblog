@@ -38,10 +38,6 @@ getExternalFeedXML = function (feedURL, successFunc, errorFunc) {
   req.send();
 }
 
-
-
-
-
 getFavicon = function(feedURL) {
   let srcLink = 'https://www.google.com/s2/favicons?size=24&domain=' + feedURL;
   return srcLink; 
@@ -80,6 +76,43 @@ parsePageURL = function(pageURL, srcFeed){
   errText += "\n Parameters begin after ? and are delimited with & (i.e., www.example.com/page?&param1=value1&param2=value2)\n"
   if (err) throw new Error(errText);
 }
+
+// LocalStorage format: 
+// Feeds: [{"name": '<filename> (X items): MM/DD/YY, HH:MM, "Title"', "filename": <filename>, "id": encodeURIComponent(<name>) }, ...]
+// "<id>" : <serializedXML>
+
+saveFeedFile = function (newFile, newDateTime) {
+  
+  // Prevent clicking too fast leading to overly many saves 
+  // should work as long as there's no multithreading??
+  let saveButton = document.getElementById("saveButton");
+  if(saveButton.disabled == true) return;
+  
+  let fn = destFeed.filename;
+  let num = newFile.querySelectorAll('item').length;
+  let dt = newDateTime.toLocaleString();
+  let title = destFeed.title;
+  
+  // dt is down to the second so ... id collisions are unlikely
+  let name = `${fn} (${num} item${num == 1?'':'s'}): ${dt}, "${title}"`;
+  let id = encodeURIComponent(name);
+  
+  // feedsArray is an array of saved feeds, from oldest to most recent
+  let feedsArray = localStorage.getItem("feeds") ? JSON.parse(localStorage.getItem("feeds")) : []; 
+  let feedObj = {"name":name, "id":id, "filename":fn};
+  feedsArray = feedsArray.concat(feedObj);
+  
+  // saving the serialized XML first in case of interruption
+  localStorage.setItem(id, serialize(newFile))
+  localStorage.setItem("feeds", JSON.stringify(feedsArray));
+  
+  // Disable save button after save have been completed 
+  saveButton.disabled = true;
+  
+  // Place check mark icon 
+  saveButton.innerHTML = '<span class="glyphicon glyphicon-floppy-saved"></span> Saved to local storage';
+}  
+
 
 // "borrowed" from https://github.com/ChaiaEran/RuSShdown/blob/main/russhdown.js
 // ty for the STRONGEST LICENSE, and consider cirno APPRECIATED :)
@@ -123,7 +156,7 @@ function serialize(toSerialize) {
         return xmlString
     }
 }
-function saveFeed(toSave, filename) {
+function downloadFeed(toSave, filename) {
     let xmlText = serialize(toSave);
     xmlFile = new Blob([xmlText], { type: 'text/xml' })
     const elem = window.document.createElement('a');
@@ -164,7 +197,7 @@ initRSSReblogMain = function(pageURL) {
     filename:"rss.xml",  //from filename
     customDisplayName:"", //from user
     customDisplayIcon:"" //from user
-    };
+  };
   cachedDestFeedLink = null
   
   // using same converter as RuSShdown for consistency
@@ -228,6 +261,9 @@ initRSSReblogMain = function(pageURL) {
     successFuncXML,
     errorFuncXML
   );
+  
+  // Populate the dropdown
+  if(populateSavedFiles()) getDestFromLocalStorage();
 }
 
 
@@ -455,6 +491,42 @@ displaySrc = function() {
 
   //3. Prompt the user for their feed (link or file)
 
+// Dest file may be selected from saved files, uploaded from the user's device, or retrieved from a link on the Internet.
+// Returns true if there are saved files
+populateSavedFiles = function() {
+  // Load the array of ID names 
+  let feedsArray = localStorage.getItem("feeds") ? JSON.parse(localStorage.getItem("feeds")) : []; 
+  if (feedsArray.length == 0) return false;
+  
+  let optionHTML = "";
+  for (obj of feedsArray) {
+    optionHTML = `<option value=${obj.id}>${obj.name}</option>\n${optionHTML}`;
+  }
+  
+  document.getElementById("destLocalLoad").disabled = false;
+  document.getElementById("destLocalLoad").innerHTML = optionHTML;
+  document.getElementById("localRadio").disabled = false;
+  
+  return true;
+}
+
+getDestFromLocalStorage = function() {
+  errorDestFeedInfo.style.display = 'none';
+  try {
+    let id = document.getElementById("destLocalLoad").value;
+    let parser = new DOMParser();
+    destFeed.file = parser.parseFromString(localStorage.getItem(id), "text/xml");
+    
+    loadDest();
+    document.getElementById("localRadio").checked = true;
+  }
+  catch(e){
+    console.error(e);
+    errorDestFeed("Error when reading file from local storage: "+e.message);
+    document.getElementById("localRadio").checked = false;
+  }
+}
+
 getDestFromLink = function() {
   errorDestFeedInfo.style.display = 'none';
   
@@ -498,41 +570,13 @@ async function getDestFromFile() {
     destFeed.file = await readRssFile(destFile);
     try {
       destFeed.file = await readRssFile(destFile);
-      //sanity check: ensure bare minimum for well-formed file
-      if(destFeed.file.querySelector('channel').parentNode !== destFeed.file.querySelector('rss')) {
-        throw new Error("Channel is not a child element of RSS");
-      }
-      // get feedURL (rss.xml) and feedWebsite (link element)
-      destFeed.feedURL = null;
-      destFeed.feedWebsite = null;
-      for (e of destFeed.file.getElementsByTagNameNS("","link")) {
-        if(e.parentNode === destFeed.file.querySelector('channel')){
-          destFeed.feedWebsite = e.textContent.trim();
-          break;
-        }
-      }
-      if (!destFeed.feedWebsite) throw new Error("RSS documents are required to have a <link> element as a child of the <channel> element");
-      
-      for (e of destFeed.file.getElementsByTagNameNS("http://www.w3.org/2005/Atom","link")) {
-        if(e.parentNode === destFeed.file.querySelector('channel') && e.getAttribute("rel") == "self"){
-          destFeed.feedURL = e.getAttribute("href");
-          break;
-        }
-      }
-      if (!destFeed.feedURL) throw new Error('Please add an <atom:link> element to <channel>, with attributes rel="self" and href=<a URL to your rss.xml>');
-      
-      for (e of destFeed.file.getElementsByTagNameNS("","title")) {
-        if(e.parentNode === destFeed.file.querySelector('channel')){
-          destFeed.title = e.textContent.trim();
-          break;
-        }
-      }
+      destFeed.filename = destFile.name;
       
       loadDest();
-      
+      document.getElementById("uploadRadio").checked = true;
     }
     catch (e) {
-      console.err(e);
+      console.error(e);
       let errText = "";
       if(destFeed.file && destFeed.file.querySelector){
         if (!destFeed.file.querySelector("title")) errText += ", feed title not found";
@@ -543,16 +587,48 @@ async function getDestFromFile() {
       else if(errText == "") errText = e.message + errText;
       else errText = errText.substring(2);
       errorDestFeed("Error when reading file: "+errText);
+      document.getElementById("uploadRadio").checked = false;
     }
   }
   else if (destFiles.length > 1){
     errorDestFeed("Error: Multiple files uploaded!");
+    document.getElementById("uploadRadio").checked = false;
   }
 }
     
   //4. On load, display the determined display name and pfp.
 loadDest = function() {
   //console.log(destFeed);
+  
+  //sanity check: ensure bare minimum for well-formed file
+  if(destFeed.file.querySelector('channel').parentNode !== destFeed.file.querySelector('rss')) {
+    throw new Error("Channel is not a child element of RSS");
+  }
+  // get feedURL (rss.xml) and feedWebsite (link element)
+  destFeed.feedURL = null;
+  destFeed.feedWebsite = null;
+  for (e of destFeed.file.getElementsByTagNameNS("","link")) {
+    if(e.parentNode === destFeed.file.querySelector('channel')){
+      destFeed.feedWebsite = e.textContent.trim();
+      break;
+    }
+  }
+  if (!destFeed.feedWebsite) throw new Error("RSS documents are required to have a <link> element as a child of the <channel> element");
+  
+  for (e of destFeed.file.getElementsByTagNameNS("http://www.w3.org/2005/Atom","link")) {
+    if(e.parentNode === destFeed.file.querySelector('channel') && e.getAttribute("rel") == "self"){
+      destFeed.feedURL = e.getAttribute("href");
+      break;
+    }
+  }
+  if (!destFeed.feedURL) throw new Error('Please add an <atom:link> element to <channel>, with attributes rel="self" and href=<a URL to your rss.xml>');
+  
+  for (e of destFeed.file.getElementsByTagNameNS("","title")) {
+    if(e.parentNode === destFeed.file.querySelector('channel')){
+      destFeed.title = e.textContent.trim();
+      break;
+    }
+  }
   
   // has a default been saved in a file?
   for (e of destFeed.file.getElementsByTagNameNS("https://purl.org/rssr/terms/","displayName")) {
@@ -665,7 +741,7 @@ generateRSS = function() {
   );
   newFile.appendChild(newRoot);
 
-  let dateTime = new Date();
+  newDateTime = new Date();
 
   // A new item is added to the feed, with all the original data of the old item
   newItem = newFile.createElement("item");
@@ -684,11 +760,11 @@ generateRSS = function() {
   let pubDateTime = new Date(srcItem.pubDate) // note: rss2json doesnt handle time zones?
 
   let [destItemLink,destItemGUID] = addLinkGUID(newItem,srcLink)
-  addContentDescription(newItem,srcContent,srcDescription,srcLink,destItemLink,destItemGUID,srcItem.title,dateTime,pubDateTime);
+  addContentDescription(newItem,srcContent,srcDescription,srcLink,destItemLink,destItemGUID,srcItem.title,newDateTime,pubDateTime);
   
   //populate without retrieving from JSON: categories (retrieved earlier), pubDate
   addCategories(newItem)
-  addPubDate(newItem,dateTime);
+  addPubDate(newItem,newDateTime);
 
   //Add the new item to the channel
   firstItem = newFile.querySelector("channel").querySelector("item");
@@ -698,7 +774,7 @@ generateRSS = function() {
   // TODO Any new namespaces are added (done when the element is added)
   
   // The last build date is updated to the current date/time.
-  updateLastBuildDate(newFile.querySelector("channel"),dateTime);
+  updateLastBuildDate(newFile.querySelector("channel"),newDateTime);
   
   // If the user selected it, the display name and icon are saved as defaults within the feed element using the "rssr:displayName" and "rssr:icon" elements
   saveDefaultDisplayNameIcon(newFile.querySelector("channel"));
@@ -707,7 +783,7 @@ generateRSS = function() {
   populatePreviews(newItem);
   
   // Download button is updated
-  document.getElementById("downloadFeed").onclick = function () {saveFeed(newFile, destFeed.filename)}
+  document.getElementById("downloadFeed").onclick = function () {downloadFeed(newFile, destFeed.filename)}
   
   // Make new card visible
   let resultsCard = document.getElementById("resultsCard");
@@ -1225,6 +1301,8 @@ function displayDisclaimer() {
 // Loading via rss2json
 
 // This can always be a backup
+
+//  -- at the moment -- using because my proxy server sometimes struggles to access certain links
 
 // Feeds are loaded from links via rss2json, to circumvent cross-origin policy
 // TODO: change to something better 
