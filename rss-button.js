@@ -16,18 +16,18 @@ if(!document.rssrButtonScriptRun) {
   var rssrButtons = document.getElementsByClassName("rssr-reblog-button")
   for (btn of rssrButtons) {
     
-    btn.btn_index = index;
+    let btn_index = index;
     
     let frameLink = btn.href+"&iframe=true";
     
-     iframes = iframes + `<iframe class="rssr-modal-iframe" id="rssrIFrame_${index}" allowtransparency="true" src="${frameLink}" style="display:none;">
+     iframes = iframes + `<iframe class="rssr-modal-iframe" id="rssrIFrame_${btn_index}" allowtransparency="true" src="${frameLink}" style="display:none;">
         Your browser doesn't support iframes. Click <a href="${frameLink}">here</a> to open ReSShaRe in a new window instead.
         </iframe>`;
     
     // When the user left clicks the link, open the modal 
     // (right click to open context menu, etc)
     btn.onclick = function(e) {
-      let iFrame = document.getElementById(`rssrIFrame_${btn.btn_index}`);
+      let iFrame = document.getElementById(`rssrIFrame_${btn_index}`);
       console.log(e.srcElement);
       console.log(e.srcElement.btn_index);
      
