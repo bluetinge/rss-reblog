@@ -47,7 +47,7 @@
 
 <!--   ( ) Use saved feed [ Select file ] -->
       <input type="radio" id="localRadio" name="howInputJS" value="localStorage" onclick="handleLocalStorageAccess(getDestFromLocalStorage)" disabled> &nbsp;
-      <label for="localRadio"> Use saved feed: </label> <select id="destLocalLoad"  onchange="handleLocalStorageAccess(getDestFromLocalStorage)" disabled><option value="none">No files are saved locally</option></select>
+      <label for="localRadio" id="localRadioLabel"> Use saved feed: </label> <select id="destLocalLoad"  onchange="handleLocalStorageAccess(getDestFromLocalStorage)" disabled><option value="none">No files are saved locally</option></select>
       <br>
 <!--   ( ) Upload your RSS feed XML file [ Select file ] -->
       <input type="radio" id="uploadRadio" name="howInputJS" value="upload" onclick="if(!document.getElementById('destFileInput').value) document.getElementById('destFileInput').click()"> &nbsp;
