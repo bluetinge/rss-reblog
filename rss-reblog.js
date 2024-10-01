@@ -325,6 +325,7 @@ handleLocalStorageAccess = async function (callback) {
       let storageHandle = await document.requestStorageAccess({
         localStorage: true,
       });
+      console.log(storageHandle);
       if (!storageHandle) storageHandle = localStorage;
       else storageHandle = storageHandle.localStorage;
       callback(storageHandle);

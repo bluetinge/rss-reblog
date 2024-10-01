@@ -50,7 +50,7 @@ if(!document.rssrButtonScriptRun) {
 .rssr-modal-background {
   display: none; /* Hidden by default */
   position: fixed; /* Stay in place */
-  z-index: 255; /* Sit on top */
+  z-index: 2047; /* Sit on top */
   /*padding-top: 100px; /* Location of the box */
   left: 0;
   top: 0;
@@ -75,10 +75,10 @@ if(!document.rssrButtonScriptRun) {
 }
 
 .rssr-modal-close {
-  z-index: 256;
+  z-index: 2048;
   position:absolute;
-  top: 10px;
-  right: 10px;
+  top: 5%;
+  right: 20px;
   font-size: 84px;
   font-weight: bold;
   color: white;
@@ -125,6 +125,8 @@ if(!document.rssrButtonScriptRun) {
   // When the user clicks away or clicks the X, close the modal
   document.getElementsByClassName("rssr-modal-close")[0].onclick = function() {
     document.getElementById("rssrModal").style.display = "none";
+    let frames = document.getElementsByClassName("rssr-modal-iframe");
+    for (f of frames) f.style.display = "none";
   }
   window.onclick = function(event) {
     if (event.target == document.getElementById("rssrModal")) {

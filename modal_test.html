@@ -114,8 +114,10 @@ var frame = document.getElementsByClassName("rssr-modal-iframe")[0];
 
 // When the user clicks the button, open the modal 
 btnLink.onclick = function(e) {
+/*
   let frameLink = e.srcElement.href+"&iframe=true"
   if (frame.src != frameLink) frame.src = frameLink;
+*/
   modal.style.display = "block";
   return e.preventDefault() && e.stopPropagation();
 }
