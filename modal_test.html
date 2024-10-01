@@ -2,8 +2,11 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+
 <style>
-body {font-family: Arial, Helvetica, sans-serif;}
 
 /* The Modal (background) */
 .rssr-modal-background {
@@ -18,19 +21,21 @@ body {font-family: Arial, Helvetica, sans-serif;}
   /*overflow: auto; /* Enable scroll if needed */
   background-color: rgb(0,0,0); /* Fallback color */
   background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 /* Modal Content */
 .rssr-modal-content {
+  
   position: absolute;
   left: 5%;
-  top: 5%;
+  top: 0%;
   margin: 0px;
   padding: 0px;
   width: 90%;
-  height: 90%;
+  height: 100%;
   background-color: transparent;
-  border: 4px solid #888;
+  border: 0px;*/
 }
 
 /* The Close Button */
@@ -69,16 +74,15 @@ body {font-family: Arial, Helvetica, sans-serif;}
   position: absolute;
   width: 100%;
   height: 100%;
+  border: 0px;
 }
 
 </style>
-</head>
-<body>
-
-<h2>Modal Example</h2>
 
 <!-- Trigger/Open The Modal -->
 <button id="myBtn">Open Modal</button>
+
+<a id="btnLink" target="_blank" href="http://127.0.0.1:8000/rss-reblog.html?&feed=https%3A%2F%2Fbluetinge.dev%2Frss.xml&guid=firstreblog">link</a>
 
 <!-- The Modal -->
 <div id="myModal" class="rssr-modal-background">
@@ -86,7 +90,7 @@ body {font-family: Arial, Helvetica, sans-serif;}
   <!-- Modal content -->
   <div class="rssr-modal-content">
     <div class="rssr-modal-close">&times;</div>
-    <iframe class="rssr-modal-iframe" allowtransparency="true" src="http://127.0.0.1:8000/rss-reblog.html?&feed=https%3A%2F%2Fbluetinge.dev%2Frss.xml&guid=firstreblog&iframe=true">
+    <iframe class="rssr-modal-iframe" id="rssrModalIFrame" allowtransparency="true" src="http://127.0.0.1:8000/rss-reblog.html?&feed=https%3A%2F%2Fbluetinge.dev%2Frss.xml&guid=firstreblog">
     Your browser doesn't support iframes. Click <a href="http://127.0.0.1:8000/rss-reblog.html?&feed=https%3A%2F%2Fbluetinge.dev%2Frss.xml&guid=firstreblog&iframe=true">here</a> to open ReSShaRe in a new window instead.
     </iframe>
   </div>
@@ -105,9 +109,15 @@ var btn = document.getElementById("myBtn");
 // Get the <span> element that closes the modal
 var span = document.getElementsByClassName("rssr-modal-close")[0];
 
+// Get the <iframe>
+var frame = document.getElementsByClassName("rssr-modal-iframe")[0];
+
 // When the user clicks the button, open the modal 
-btn.onclick = function() {
+btnLink.onclick = function(e) {
+  let frameLink = e.srcElement.href+"&iframe=true"
+  if (frame.src != frameLink) frame.src = frameLink;
   modal.style.display = "block";
+  return e.preventDefault() && e.stopPropagation();
 }
 
 // When the user clicks on <span> (x), close the modal

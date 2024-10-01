@@ -28,7 +28,7 @@
   <p id="errorTop" style="color:red"></p>
 </div>
   
-<div class="container" id="all" style="visibility: hidden;">
+<div class="container" id="all" style="display: none;">
   
     <h3 class="title">Reblogging <b id="srcItemTitle">Title</b> from <b class="srcFeedDisplayName" >Feed</b>:</h3>
 
@@ -46,8 +46,8 @@
       <br>-->
 
 <!--   ( ) Use saved feed [ Select file ] -->
-      <input type="radio" id="localRadio" name="howInputJS" value="localStorage" onclick="getDestFromLocalStorage()" disabled> &nbsp;
-      <label for="localRadio"> Use saved feed: </label> <select id="destLocalLoad"  onchange="getDestFromLocalStorage()" disabled><option value="none">No files are saved locally</option></select>
+      <input type="radio" id="localRadio" name="howInputJS" value="localStorage" onclick="handleLocalStorageAccess(getDestFromLocalStorage)" disabled> &nbsp;
+      <label for="localRadio"> Use saved feed: </label> <select id="destLocalLoad"  onchange="handleLocalStorageAccess(getDestFromLocalStorage)" disabled><option value="none">No files are saved locally</option></select>
       <br>
 <!--   ( ) Upload your RSS feed XML file [ Select file ] -->
       <input type="radio" id="uploadRadio" name="howInputJS" value="upload" onclick="if(!document.getElementById('destFileInput').value) document.getElementById('destFileInput').click()"> &nbsp;
@@ -130,7 +130,7 @@
   </div>
   
 </div>
-<div class="card" id="resultsCard" style="visibility:hidden;"> 
+<div class="card" id="resultsCard" style="display:none;"> 
   
   <div class="section results" id="results">
     
@@ -173,7 +173,7 @@
   <div class="section">
     <button type="button" class="btn btn-info btn-generate center-button" id="downloadFeed"> <span class="glyphicon glyphicon-download-alt"></span> Download rss.xml</button>
     <small id="saveDisclaimer" style="display:none;"><i>Note: Changes made in the editor are not saved to the rss.xml (I'll implement that soon). </i></small>
-    <button style="float:right;" type="button" class="btn btn-info btn-generate center-button" id="saveButton" onclick="saveFeedFile(newFile, newDateTime) "> <span class="glyphicon glyphicon-floppy-disk"></span> Save to local storage</button>
+    <button style="float:right;" type="button" class="btn btn-info btn-generate center-button" id="saveButton" onclick="handleLocalStorageAccess(saveFeedFile) "> <span class="glyphicon glyphicon-floppy-disk"></span> Save to local storage</button>
   </div>
 
 <!-- [ ] Enable cookies to store my default preferences (Note: will not default to unsafe security preferences.) -->

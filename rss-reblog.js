@@ -82,36 +82,50 @@ parsePageURL = function(pageURL, srcFeed){
 // Feeds: [{"name": '<filename> (X items): MM/DD/YY, HH:MM, "Title"', "filename": <filename>, "id": encodeURIComponent(<name>) }, ...]
 // "<id>" : <serializedXML>
 
-saveFeedFile = function (newFile, newDateTime) {
+saveFeedFile = function (storageHandle) {
   
   // Prevent clicking too fast leading to overly many saves 
   // should work as long as there's no multithreading??
   let saveButton = document.getElementById("saveButton");
   if(saveButton.disabled == true) return;
   
-  let fn = destFeed.filename;
-  let num = newFile.querySelectorAll('item').length;
-  let dt = newDateTime.toLocaleString();
-  let title = destFeed.title;
+  try {
+    if (newFile === undefined || newDateTime === undefined){
+      throw new Error(newFile === undefined ? "newFile is undefined" : "newDateTime is undefined");
+    }
+    
+    let fn = destFeed.filename;
+    let num = newFile.querySelectorAll('item').length;
+    let dt = newDateTime.toLocaleString();
+    let title = destFeed.title;
+    
+    // dt is down to the second so ... id collisions are unlikely
+    let name = `${fn} (${num} item${num == 1?'':'s'}): ${dt}, "${title}"`;
+    let id = encodeURIComponent(name);
+    
+    // feedsArray is an array of saved feeds, from oldest to most recent
+    let feedsArray = storageHandle.getItem("feeds") ? JSON.parse(storageHandle.getItem("feeds")) : []; 
+    let feedObj = {"name":name, "id":id, "filename":fn};
+    feedsArray = feedsArray.concat(feedObj);
+    
+    // saving the serialized XML first in case of interruption
+    storageHandle.setItem(id, serialize(newFile))
+    storageHandle.setItem("feeds", JSON.stringify(feedsArray));
+    
+    // Disable save button after save has been completed 
+    saveButton.disabled = true;
+    
+    // Place check mark icon 
+    saveButton.innerHTML = '<span class="glyphicon glyphicon-floppy-saved"></span> Saved to local storage';
+    
+    populateSavedFiles(storageHandle);
+  }
   
-  // dt is down to the second so ... id collisions are unlikely
-  let name = `${fn} (${num} item${num == 1?'':'s'}): ${dt}, "${title}"`;
-  let id = encodeURIComponent(name);
-  
-  // feedsArray is an array of saved feeds, from oldest to most recent
-  let feedsArray = localStorage.getItem("feeds") ? JSON.parse(localStorage.getItem("feeds")) : []; 
-  let feedObj = {"name":name, "id":id, "filename":fn};
-  feedsArray = feedsArray.concat(feedObj);
-  
-  // saving the serialized XML first in case of interruption
-  localStorage.setItem(id, serialize(newFile))
-  localStorage.setItem("feeds", JSON.stringify(feedsArray));
-  
-  // Disable save button after save have been completed 
-  saveButton.disabled = true;
-  
-  // Place check mark icon 
-  saveButton.innerHTML = '<span class="glyphicon glyphicon-floppy-saved"></span> Saved to local storage';
+  catch(e) {
+    console.error(e);
+    saveButton.innerHTML = ' <span class="glyphicon glyphicon-floppy-remove"></span>An error occurred while saving';
+    saveButton.disabled = true;
+  }
 }  
 
 
@@ -267,22 +281,20 @@ initRSSReblogMain = function(pageURL) {
     errorFuncXML
   );
   
+  //true if the save button should not be re-enabled on generate (if save isn't working, for example)
+  document.getElementById("saveButton").prevention = false; 
+  
   // Populate the dropdown
-  if(populateSavedFiles()) getDestFromLocalStorage();
-  console.log("MEOW", location.origin);
+  handleLocalStorageAccess(
+    function(storageHandle) {
+       if(populateSavedFiles(storageHandle)) getDestFromLocalStorage(storageHandle);
+    });
 }
 
-populateSavedFiles = function() {
+populateSavedFiles = function(storageHandle) {
   // Load the array of ID names 
-  let feedsArray = localStorage.getItem("feeds") ? JSON.parse(localStorage.getItem("feeds")) : []; 
+  let feedsArray = storageHandle.getItem("feeds") ? JSON.parse(storageHandle.getItem("feeds")) : []; 
   if (feedsArray.length == 0) {
-    if (false && document.hasStorageAccess && !document.hasStorageAccess()) {
-      document.getElementById("destLocalLoad").innerHTML = `<option value="none">Access to local storage was denied. <b>Click here to request access</b></option>`;
-      document.getElementById("destLocalLoad").onclick = requestLocalStorage;
-      document.getElementById("destLocalLoad").disabled = false;
-      document.getElementById("destLocalLoad").onclick = requestLocalStorage;
-      document.getElementById("localRadio").disabled = false;
-    }
     return false;
   }
   
@@ -298,8 +310,112 @@ populateSavedFiles = function() {
   return true;
 }
 
-requestLocalStorage = function () {
+// Get correct storage handle
+handleLocalStorageAccess = async function (callback) {
   
+  if(!document.hasStorageAccess){
+    //API unsupported, use normal handle
+    console.log("API unsupported");
+    callback(localStorage);
+  }
+  else {
+    const hasAccess = await document.hasStorageAccess();
+    if(hasAccess){
+      console.log("Access granted automatically");
+      let storageHandle = await document.requestStorageAccess({
+        localStorage: true,
+      });
+      if (!storageHandle) storageHandle = localStorage;
+      else storageHandle = storageHandle.localStorage;
+      callback(storageHandle);
+    }
+    else {
+      // Check whether third-party cookie access has been granted
+      // to another same-site embed
+      try {
+        const permission = await navigator.permissions.query({
+          name: "storage-access",
+        });
+
+        if (permission.state === "granted") {
+          console.log("Access previously granted");
+          // If so, you can just call requestStorageAccess() without a user interaction,
+          // and it will resolve automatically.
+          let storageHandle = await document.requestStorageAccess({
+            localStorage: true,
+          });
+          if (!storageHandle) storageHandle = localStorage;
+          else storageHandle = storageHandle.localStorage;
+          callback(storageHandle);
+          
+        } else if (permission.state === "prompt") {
+          
+          console.log("Prompting for access");
+          
+          // Need to call requestStorageAccess() after a user interaction
+          console.log("Need to prompt for storage access");
+          
+          document.getElementById("destLocalLoad").innerHTML = `<option value="none">Access to local storage was denied. Click here to request access. </option>`;
+          document.getElementById("destLocalLoad").onclick = requestLocalStorage;
+          document.getElementById("destLocalLoad").disabled = false;
+          document.getElementById("localRadio").onclick = requestLocalStorage;
+          document.getElementById("localRadio").disabled = false;
+          
+          let saveButton = document.getElementById("saveButton");
+          saveButton.innerHTML = ' <span class="glyphicon glyphicon-floppy-remove"></span> Access to local storage denied. <b>Click here to request access.</b>';
+          saveButton.onclick = requestLocalStorage;
+          saveButton.disabled = false;
+          saveButton.prevention = true;
+              
+        } else if (permission.state === "denied") {
+          console.log("Access to local storage previously denied by user.")
+          preventStorageAccess();
+        }
+      } catch (e) {
+        console.error(e)
+        preventStorageAccess();
+      }
+    }
+  }
+}
+
+// Needs to be called from within a user gesture
+requestLocalStorage = async function() {
+  document.requestStorageAccess({ localStorage: true }).then(
+    (storageHandle) => {
+      console.log("localStorage access granted");
+      
+      document.getElementById("destLocalLoad").onclick = async () => {handleLocalStorageAccess(getDestFromLocalStorage)};
+      document.getElementById("destLocalLoad").disabled = false;
+      document.getElementById("localRadio").onclick = async () => {handleLocalStorageAccess(getDestFromLocalStorage)};
+      document.getElementById("localRadio").disabled = false;
+      
+      let saveButton = document.getElementById("saveButton");
+      saveButton = async () => {handleLocalStorageAccess(saveFeedFile)};
+      saveButton.innerHTML = ' <span class="glyphicon glyphicon-floppy-disk"></span> Save to local storage';
+      saveButton.disabled = false;
+      saveButton.prevention = false;
+      
+      if (!storageHandle) storageHandle = localStorage;
+      else storageHandle = storageHandle.localStorage;
+      if(populateSavedFiles(storageHandle)) getDestFromLocalStorage(storageHandle);
+    },
+    () => {
+      console.log("localStorage access denied");
+      preventStorageAccess();
+    },
+  );
+}
+
+preventStorageAccess = function() {
+  document.getElementById("destLocalLoad").innerHTML = `<option value="none">Access to local storage was denied.`;
+  document.getElementById("destLocalLoad").disabled = true;
+  document.getElementById("localRadio").disabled = true;
+  
+  let saveButton = document.getElementById("saveButton");
+  saveButton.innerHTML = ' <span class="glyphicon glyphicon-floppy-remove"></span> Unable to save: denied access to local storage.';
+  saveButton.disabled = true;
+  saveButton.prevention = true;
 }
 
 
@@ -519,7 +635,7 @@ displaySrc = function() {
   
   //display to user
   errorTop.style.display = 'none';
-  document.getElementById('all').style.visibility = 'visible';  
+  document.getElementById('all').style.display = '';  
 }
 
 
@@ -529,13 +645,13 @@ displaySrc = function() {
 // Dest file may be selected from saved files, uploaded from the user's device, or retrieved from a link on the Internet.
 // Returns true if there are saved files
 
-getDestFromLocalStorage = function() {
+getDestFromLocalStorage = function(storageHandle) {
   errorDestFeedInfo.style.display = 'none';
   try {
     let id = document.getElementById("destLocalLoad").value;
     if (id == "none") return false;
     let parser = new DOMParser();
-    destFeed.file = parser.parseFromString(localStorage.getItem(id), "text/xml");
+    destFeed.file = parser.parseFromString(storageHandle.getItem(id), "text/xml");
     
     loadDest();
     document.getElementById("localRadio").checked = true;
@@ -805,12 +921,21 @@ generateRSS = function() {
   // Download button is updated
   document.getElementById("downloadFeed").onclick = function () {downloadFeed(newFile, destFeed.filename)}
   
+  // Save button is updated, if available
+  let saveButton = document.getElementById("saveButton");
+  if(!saveButton.prevention){
+      saveButton.innerHTML = ' <span class="glyphicon glyphicon-floppy-disk"></span> Save to local storage';
+      saveButton.disabled = false;
+      saveButton = async () => {handleLocalStorageAccess(saveFeedFile)};
+  }
+
+  
   // Make new card visible
   let resultsCard = document.getElementById("resultsCard");
-  if(resultsCard.style.visibility == "hidden") {
+  if(resultsCard.style.display == "none") {
     openTab(null, 'previewPane');
     document.getElementById("previewButton").className += " active";
-    resultsCard.style.visibility = "visible";
+    resultsCard.style.display = "";
   }
   document.getElementById("downloadFeed").scrollIntoView();
 }
