@@ -1,5 +1,5 @@
 # rss-reblog
-Reblogger for RSS items
+Reblogger for RSS items. Generate a reblog button for your RSS feed here: https://rssr.bluetinge.dev/
 
 ### What is this?
 
