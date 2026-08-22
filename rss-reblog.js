@@ -284,7 +284,7 @@ initRSSReblogMain = function(pageURL) {
   //true if the save button should not be re-enabled on generate (if save isn't working, for example)
   document.getElementById("saveButton").prevention = false; 
   
-  if(isIFrame) {
+  if(isIFrame && false) {
     // Due to the weird bug I'm trying to fix 
     let newURL = pageURL.replaceAll("&iframe=true","");
     document.getElementById("localRadioLabel").innerHTML = `To access local storage, <a target="_blank" href=${newURL}>open this window in a new tab.</a>`;

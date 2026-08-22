@@ -20,7 +20,7 @@ if(!document.rssrButtonScriptRun) {
     
     let frameLink = btn.href+"&iframe=true";
     
-     iframes = iframes + `<iframe class="rssr-modal-iframe" id="rssrIFrame_${btn_index}" allowtransparency="true" src="${frameLink}" style="display:none;">
+     iframes = iframes + `<iframe class="rssr-modal-iframe" id="rssrIFrame_${btn_index}" allowtransparency="true"   sandbox="allow-scripts allow-same-origin allow-storage-access-by-user-activation" src="${frameLink}" style="display:none;">
         Your browser doesn't support iframes. Click <a href="${frameLink}">here</a> to open ReSShaRe in a new window instead.
         </iframe>`;
     
